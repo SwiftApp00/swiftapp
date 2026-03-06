@@ -4,7 +4,7 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
 
 export function Clientes() {
     const [clients, setClients] = useState([]);
@@ -93,6 +93,8 @@ export function Clientes() {
             if (data && data.length > 0) {
                 const result = data[0];
                 setFormData(prev => ({ ...prev, address: result.display_name }));
+            } else {
+                alert("Eircode not found. Please enter address manually.");
             }
         } catch (err) {
             console.error("Nominatim error:", err);
@@ -107,7 +109,6 @@ export function Clientes() {
 
         try {
             if (editingClient) {
-                // Update
                 const { error } = await supabase
                     .from('clients')
                     .update({
@@ -123,7 +124,6 @@ export function Clientes() {
                     .eq('id', editingClient.id);
                 if (error) throw error;
             } else {
-                // Insert
                 const { error } = await supabase
                     .from('clients')
                     .insert([{
@@ -183,6 +183,11 @@ export function Clientes() {
         });
     };
 
+    const isIdValid = formData.identification_type === 'Company / Legal Entity' || formData.identification_type === 'Individual / Natural Person';
+    const isEircodeValid = formData.eircode.replace(/\s/g, '').length === 7;
+    const showEircode = isIdValid || editingClient;
+    const showRestOfForm = (isEircodeValid && formData.address) || editingClient;
+
     const columns = [
         { header: 'Client Since', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
         { header: 'Name', accessor: 'name' },
@@ -224,9 +229,9 @@ export function Clientes() {
                 title={editingClient ? "Edit Client" : "Register New Client"}
             >
                 <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-4 pt-2">
-                        {/* ID Section */}
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                    <div className="space-y-6 pt-2">
+                        {/* 1. Identification Section */}
+                        <div className={`p-4 rounded-xl border transition-all duration-300 ${isIdValid ? 'bg-green-50/30 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
                             <Input
                                 label="Identification (ID)"
                                 placeholder="7 numbers + 1 letter or 1-6 numbers"
@@ -235,70 +240,80 @@ export function Clientes() {
                                 required
                             />
                             {formData.identification && (
-                                <div className="text-xs font-bold text-[#8B0000] flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
-                                    <Search size={12} />
-                                    Type Detected: {formData.identification_type}
+                                <div className={`text-xs font-bold mt-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 ${isIdValid ? 'text-green-600' : 'text-[#8B0000]'}`}>
+                                    {isIdValid ? <CheckCircle2 size={12} /> : <Search size={12} />}
+                                    {isIdValid ? `Validated: ${formData.identification_type}` : `Type Detected: ${formData.identification_type}`}
                                 </div>
                             )}
                         </div>
 
-                        {/* Address Section */}
-                        <div className="space-y-3 p-4 bg-red-50/30 rounded-xl border border-red-50">
-                            <div className="relative">
-                                <Input
-                                    label="Eircode"
-                                    placeholder="XXX XXXX"
-                                    value={formData.eircode}
-                                    onChange={handleEircodeChange}
-                                    maxLength={8}
-                                    required
-                                />
-                                {isSearchingEircode && (
-                                    <div className="absolute right-3 bottom-2.5">
-                                        <Loader2 size={16} className="animate-spin text-[#8B0000]" />
+                        {/* 2. Eircode Section - Progressive Reveal */}
+                        {showEircode && (
+                            <div className={`space-y-3 p-4 rounded-xl border animate-in fade-in slide-in-from-top-4 duration-500 ${showRestOfForm ? 'bg-green-50/30 border-green-100' : 'bg-red-50/30 border-red-50'}`}>
+                                <div className="relative">
+                                    <Input
+                                        label="Eircode"
+                                        placeholder="XXX XXXX"
+                                        value={formData.eircode}
+                                        onChange={handleEircodeChange}
+                                        maxLength={8}
+                                        required
+                                    />
+                                    {isSearchingEircode && (
+                                        <div className="absolute right-3 bottom-0.5">
+                                            <Loader2 size={16} className="animate-spin text-[#8B0000]" />
+                                        </div>
+                                    )}
+                                </div>
+                                {formData.address && (
+                                    <div className="animate-in fade-in slide-in-from-top-2">
+                                        <Input
+                                            label="Full Address (Auto-filled)"
+                                            type="textarea"
+                                            value={formData.address}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                                            required
+                                            inputClassName="bg-white/50"
+                                        />
                                     </div>
                                 )}
                             </div>
-                            <Input
-                                label="Full Address"
-                                type="textarea"
-                                placeholder="Auto-filled via Eircode lookup..."
-                                value={formData.address}
-                                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                                required
-                            />
-                        </div>
+                        )}
 
-                        {/* Basic Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input
-                                label="Full Name / Company Name"
-                                value={formData.name}
-                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                required
-                            />
-                            <Input
-                                label="WhatsApp"
-                                placeholder="+353 ..."
-                                value={formData.whatsapp}
-                                onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                            />
-                            <Input
-                                label="Email"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                            />
-                            <Input
-                                label="Instagram"
-                                placeholder="@username"
-                                value={formData.instagram}
-                                onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
-                            />
-                        </div>
+                        {/* 3. The Rest - Final Reveal */}
+                        {showRestOfForm && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                                <Input
+                                    label="Full Name / Company Name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    required
+                                    className="md:col-span-2"
+                                />
+                                <Input
+                                    label="WhatsApp"
+                                    placeholder="+353 ..."
+                                    value={formData.whatsapp}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                                />
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                />
+                                <Input
+                                    label="Instagram"
+                                    placeholder="@username"
+                                    value={formData.instagram}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+                                    className="md:col-span-2"
+                                />
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex gap-3 pt-4 border-t border-gray-100">
+                    <div className="flex gap-3 pt-4 border-t border-gray-100 mt-2">
                         {editingClient && (
                             <Button
                                 type="button"
@@ -320,15 +335,17 @@ export function Clientes() {
                             >
                                 Cancel
                             </Button>
-                            <Button
-                                type="submit"
-                                className="flex-1"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <Loader2 size={18} className="animate-spin" />
-                                ) : (editingClient ? 'Update Client' : 'Register Client')}
-                            </Button>
+                            {showRestOfForm && (
+                                <Button
+                                    type="submit"
+                                    className="flex-1 bg-[#8B0000] hover:bg-red-900"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <Loader2 size={18} className="animate-spin" />
+                                    ) : (editingClient ? 'Update Client' : 'Register Client')}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </form>
