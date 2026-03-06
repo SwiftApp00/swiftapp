@@ -54,11 +54,13 @@ export const chatService = {
         const apiKey = getApiKey();
         if (!apiKey) return "API Key Missing. Please check Cloudflare settings.";
 
+        // Verified available models based on user account list
         const strategies = [
-            { ver: 'v1beta', mod: 'gemini-2.0-flash' },
-            { ver: 'v1beta', mod: 'gemini-1.5-flash' },
-            { ver: 'v1', mod: 'gemini-1.5-flash' },
-            { ver: 'v1beta', mod: 'gemini-pro' }
+            { ver: 'v1beta', mod: 'gemini-2.5-flash' },       // Newest Flash
+            { ver: 'v1beta', mod: 'gemini-2.0-flash-lite' },  // Lite version (better quota usually)
+            { ver: 'v1beta', mod: 'gemini-3-flash-preview' }, // Preview 3.0
+            { ver: 'v1beta', mod: 'gemini-flash-latest' },    // Latest generic
+            { ver: 'v1beta', mod: 'gemini-2.0-flash' }        // Fallback (returning 429 currently)
         ];
 
         for (const strategy of strategies) {
@@ -80,7 +82,12 @@ export const chatService = {
                 });
 
                 if (!response.ok) {
-                    if (response.status === 429) continue;
+                    const errData = await response.json().catch(() => ({}));
+                    if (response.status === 429) {
+                        console.warn(`Quota exceeded for ${strategy.mod}, trying next...`);
+                        continue;
+                    }
+                    console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
                     continue;
                 }
 
@@ -92,6 +99,6 @@ export const chatService = {
             }
         }
 
-        return "SwiftBot is currently resting! ☕ We're having a connection issue. Please click the button below to talk with us directly on WhatsApp!";
+        return "SwiftBot is experiencing high demand! ☕ Our AI service is currently at capacity (Error 429). Please try again in 30 seconds or click the button below to talk with us directly on WhatsApp!";
     }
 };
