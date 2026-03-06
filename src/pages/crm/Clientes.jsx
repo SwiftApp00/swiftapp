@@ -4,7 +4,7 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export function Clientes() {
     const [clients, setClients] = useState([]);
@@ -20,9 +20,19 @@ export function Clientes() {
         identification_type: '',
         name: '',
         eircode: '',
-        address: '',
+        street: '',
+        house_number: '',
+        apartment: '',
+        area: '',
+        city: '',
+        county: '',
         delivery_eircode: '',
-        delivery_address: '',
+        delivery_street: '',
+        delivery_house_number: '',
+        delivery_apartment: '',
+        delivery_area: '',
+        delivery_city: '',
+        delivery_county: '',
         whatsapp: '',
         email: '',
         instagram: ''
@@ -50,9 +60,19 @@ export function Clientes() {
             identification_type: client.identification_type || '',
             name: client.name || '',
             eircode: client.eircode || '',
-            address: client.address || '',
+            street: client.street || '',
+            house_number: client.house_number || '',
+            apartment: client.apartment || '',
+            area: client.area || '',
+            city: client.city || '',
+            county: client.county || '',
             delivery_eircode: client.delivery_eircode || '',
-            delivery_address: client.delivery_address || '',
+            delivery_street: client.delivery_street || '',
+            delivery_house_number: client.delivery_house_number || '',
+            delivery_apartment: client.delivery_apartment || '',
+            delivery_area: client.delivery_area || '',
+            delivery_city: client.delivery_city || '',
+            delivery_county: client.delivery_county || '',
             whatsapp: client.whatsapp || '',
             email: client.email || '',
             instagram: client.instagram || ''
@@ -103,10 +123,35 @@ export function Clientes() {
             const data = await res.json();
             if (data && data.length > 0) {
                 const result = data[0];
+                const addr = result.address;
+
+                // Mapping logic
+                const mappedData = {
+                    street: addr.road || addr.pedestrian || addr.cycleway || '',
+                    house_number: addr.house_number || '',
+                    city: addr.city || addr.town || addr.village || addr.suburb || '',
+                    county: addr.county || '',
+                    area: addr.neighbourhood || addr.suburb || ''
+                };
+
                 if (type === 'main') {
-                    setFormData(prev => ({ ...prev, address: result.display_name }));
+                    setFormData(prev => ({
+                        ...prev,
+                        street: mappedData.street,
+                        house_number: mappedData.house_number,
+                        city: mappedData.city,
+                        county: mappedData.county,
+                        area: mappedData.area
+                    }));
                 } else {
-                    setFormData(prev => ({ ...prev, delivery_address: result.display_name }));
+                    setFormData(prev => ({
+                        ...prev,
+                        delivery_street: mappedData.street,
+                        delivery_house_number: mappedData.house_number,
+                        delivery_city: mappedData.city,
+                        delivery_county: mappedData.county,
+                        delivery_area: mappedData.area
+                    }));
                 }
             } else {
                 alert(`Eircode ${eircode} not found.`);
@@ -128,9 +173,19 @@ export function Clientes() {
             identification: formData.identification,
             identification_type: formData.identification_type,
             eircode: formData.eircode,
-            address: formData.address,
+            street: formData.street,
+            house_number: formData.house_number,
+            apartment: formData.apartment,
+            area: formData.area,
+            city: formData.city,
+            county: formData.county,
             delivery_eircode: formData.delivery_eircode,
-            delivery_address: formData.delivery_address,
+            delivery_street: formData.delivery_street,
+            delivery_house_number: formData.delivery_house_number,
+            delivery_apartment: formData.delivery_apartment,
+            delivery_area: formData.delivery_area,
+            delivery_city: formData.delivery_city,
+            delivery_county: formData.delivery_county,
             whatsapp: formData.whatsapp,
             email: formData.email,
             instagram: formData.instagram
@@ -180,7 +235,8 @@ export function Clientes() {
         setEditingClient(null);
         setFormData({
             identification: '', identification_type: '', name: '',
-            eircode: '', address: '', delivery_eircode: '', delivery_address: '',
+            eircode: '', street: '', house_number: '', apartment: '', area: '', city: '', county: '',
+            delivery_eircode: '', delivery_street: '', delivery_house_number: '', delivery_apartment: '', delivery_area: '', delivery_city: '', delivery_county: '',
             whatsapp: '', email: '', instagram: ''
         });
     };
@@ -188,7 +244,7 @@ export function Clientes() {
     const isIdValid = formData.identification_type === 'Company / Legal Entity' || formData.identification_type === 'Individual / Natural Person';
     const isEircodeValid = formData.eircode.replace(/\s/g, '').length === 7;
     const showEircode = isIdValid || editingClient;
-    const showRestOfForm = (isEircodeValid && formData.address) || editingClient;
+    const showRestOfForm = (isEircodeValid && formData.street) || editingClient;
 
     const columns = [
         { header: 'Date', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
@@ -250,11 +306,14 @@ export function Clientes() {
 
                         {/* 2. Main Address Section */}
                         {showEircode && (
-                            <div className={`space-y-3 p-4 rounded-xl border animate-in fade-in slide-in-from-top-4 duration-500 ${showRestOfForm ? 'bg-green-50/30 border-green-100' : 'bg-red-50/30 border-red-50'}`}>
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Main Address</h4>
+                            <div className={`space-y-4 p-4 rounded-xl border animate-in fade-in slide-in-from-top-4 duration-500 ${showRestOfForm ? 'bg-green-50/30 border-green-100' : 'bg-red-50/30 border-red-50'}`}>
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <MapPin size={14} /> Main Address
+                                </h4>
+
                                 <div className="relative">
                                     <Input
-                                        label="Main Eircode"
+                                        label="Eircode"
                                         placeholder="XXX XXXX"
                                         value={formData.eircode}
                                         onChange={(e) => handleEircodeChange(e, 'main')}
@@ -267,57 +326,119 @@ export function Clientes() {
                                         </div>
                                     )}
                                 </div>
-                                {formData.address && (
-                                    <Input
-                                        label="Full Main Address"
-                                        type="textarea"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                                        required
-                                    />
+
+                                {showRestOfForm && (
+                                    <div className="space-y-3 pt-2 border-t border-gray-100 animate-in fade-in duration-300">
+                                        <Input
+                                            label="Street / Road / Avenue"
+                                            value={formData.street}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                                            required
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Input
+                                                label="House Number / Name"
+                                                value={formData.house_number}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, house_number: e.target.value }))}
+                                                required
+                                            />
+                                            <Input
+                                                label="Apartment / Unit / Floor"
+                                                value={formData.apartment}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, apartment: e.target.value }))}
+                                            />
+                                        </div>
+                                        <Input
+                                            label="Area / District (Optional)"
+                                            value={formData.area}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Input
+                                                label="City / Town"
+                                                value={formData.city}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                                                required
+                                            />
+                                            <Input
+                                                label="County"
+                                                value={formData.county}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, county: e.target.value }))}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {/* 3. The Rest + Delivery Address */}
+                        {/* 3. Delivery Address Section */}
                         {showRestOfForm && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                                {/* Delivery Address Section */}
-                                <div className="p-4 bg-blue-50/30 border border-blue-100 rounded-xl space-y-3">
-                                    <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Delivery Address</h4>
-                                    <div className="relative">
-                                        <Input
-                                            label="Delivery Eircode"
-                                            placeholder="XXX XXXX"
-                                            value={formData.delivery_eircode}
-                                            onChange={(e) => handleEircodeChange(e, 'delivery')}
-                                            maxLength={8}
-                                        />
-                                        {isSearchingDeliveryEircode && (
-                                            <div className="absolute right-3 bottom-0.5">
-                                                <Loader2 size={16} className="animate-spin text-blue-600" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    {formData.delivery_address && (
-                                        <Input
-                                            label="Full Delivery Address"
-                                            type="textarea"
-                                            value={formData.delivery_address}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_address: e.target.value }))}
-                                        />
+                            <div className="space-y-4 p-4 rounded-xl border border-blue-100 bg-blue-50/10 animate-in fade-in slide-in-from-top-4 duration-500">
+                                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                    <MapPin size={14} /> Delivery Address
+                                </h4>
+
+                                <div className="relative">
+                                    <Input
+                                        label="Delivery Eircode"
+                                        placeholder="XXX XXXX"
+                                        value={formData.delivery_eircode}
+                                        onChange={(e) => handleEircodeChange(e, 'delivery')}
+                                        maxLength={8}
+                                    />
+                                    {isSearchingDeliveryEircode && (
+                                        <div className="absolute right-3 bottom-0.5">
+                                            <Loader2 size={16} className="animate-spin text-blue-600" />
+                                        </div>
                                     )}
                                 </div>
 
-                                {/* Personal Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-3 pt-2 border-t border-blue-50">
                                     <Input
-                                        label="Full Name / Company Name"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                        required
-                                        className="md:col-span-2"
+                                        label="Delivery Street"
+                                        value={formData.delivery_street}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_street: e.target.value }))}
                                     />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input
+                                            label="House Number / Name"
+                                            value={formData.delivery_house_number}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_house_number: e.target.value }))}
+                                        />
+                                        <Input
+                                            label="Apartment / Unit / Floor"
+                                            value={formData.delivery_apartment}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_apartment: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input
+                                            label="City / Town"
+                                            value={formData.delivery_city}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_city: e.target.value }))}
+                                        />
+                                        <Input
+                                            label="County"
+                                            value={formData.delivery_county}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, delivery_county: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Personal Info */}
+                        {showRestOfForm && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500 pt-2">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact Information</h4>
+                                <Input
+                                    label="Full Name / Company Name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    required
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="WhatsApp"
                                         value={formData.whatsapp}
@@ -329,14 +450,13 @@ export function Clientes() {
                                         value={formData.email}
                                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                     />
-                                    <Input
-                                        label="Instagram"
-                                        placeholder="@username"
-                                        value={formData.instagram}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
-                                        className="md:col-span-2"
-                                    />
                                 </div>
+                                <Input
+                                    label="Instagram"
+                                    placeholder="@username"
+                                    value={formData.instagram}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+                                />
                             </div>
                         )}
                     </div>
