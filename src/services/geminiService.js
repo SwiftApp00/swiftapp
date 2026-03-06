@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 const getApiKey = () => {
     const key = import.meta.env.VITE_GEMINI_API_KEY;
     if (!key) return null;
@@ -5,25 +7,58 @@ const getApiKey = () => {
 };
 
 const SYSTEM_INSTRUCTION = `
-You are "SwiftBot", the AI for SwiftApp (Dublin Transport).
-Helpful, professional, English.
-Ask for Name, Items, Addresses, Date for quotes.
-Encourage using the WhatsApp button for finalization.
+You are "SwiftBot", the AI assistant for "Swift Transport & Solutions" (Dublin's premier transport service).
+TONE: Professional, helpful, concise, English only.
+
+GOAL: Qualify leads for removals or deliveries by capturing:
+1. Name
+2. List of Items (What is being moved?)
+3. Pickup Address
+4. Delivery Address
+5. Preferred Date
+
+CRITICAL RULES:
+- Ask only ONE question at a time.
+- Identify yourself as SwiftBot from "Swift Transport & Solutions".
+- If the user asks to speak to a human or asks something you don't know, append "[SHOW_WHATSAPP]" to your message.
+- Once (and only once) you have ALL 5 pieces of information, append a hidden lead tag at the very end of your message in exactly this format:
+[SAVE_LEAD: {"name": "...", "items_to_move": "...", "pickup_address": "...", "delivery_address": "...", "preferred_date": "YYYY-MM-DD"}]
+- Also append "[SHOW_WHATSAPP]" after the lead tag to let them finalize.
 `;
 
 export const chatService = {
+    async saveLead(leadData) {
+        try {
+            const { error } = await supabase
+                .from('leads')
+                .insert([
+                    {
+                        name: leadData.name,
+                        items_to_move: leadData.items_to_move,
+                        pickup_address: leadData.pickup_address,
+                        delivery_address: leadData.delivery_address,
+                        preferred_date: leadData.preferred_date || null,
+                        status: 'new'
+                    }
+                ]);
+            if (error) throw error;
+            console.log("Lead saved successfully to CRM");
+            return true;
+        } catch (error) {
+            console.error("Error saving lead to CRM:", error);
+            return false;
+        }
+    },
+
     async sendMessage(chatHistory, userMessage) {
         const apiKey = getApiKey();
         if (!apiKey) return "API Key Missing. Please check Cloudflare settings.";
 
-        // Strategies to try based on the user's specific AI Studio list (Gemini 3.x/2.x)
         const strategies = [
             { ver: 'v1beta', mod: 'gemini-2.0-flash' },
-            { ver: 'v1beta', mod: 'gemini-2.0-flash-lite-preview-02-05' },
-            { ver: 'v1beta', mod: 'gemini-3-flash-preview' },
-            { ver: 'v1beta', mod: 'gemini-3.1-flash-lite-preview' },
             { ver: 'v1beta', mod: 'gemini-1.5-flash' },
-            { ver: 'v1', mod: 'gemini-1.5-flash' }
+            { ver: 'v1', mod: 'gemini-1.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-pro' }
         ];
 
         for (const strategy of strategies) {
@@ -32,9 +67,7 @@ export const chatService = {
 
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [
                             {
@@ -42,21 +75,12 @@ export const chatService = {
                                 parts: [{ text: SYSTEM_INSTRUCTION + "\n\nUser Message: " + userMessage }]
                             }
                         ],
-                        generationConfig: {
-                            maxOutputTokens: 500,
-                            temperature: 0.7,
-                        }
+                        generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
                     })
                 });
 
                 if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    // If we hit a quota limit (429), log it and try the NEXT model in the list
-                    if (response.status === 429) {
-                        console.warn(`Quota exceeded for ${strategy.mod}, trying next...`);
-                        continue;
-                    }
-                    console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
+                    if (response.status === 429) continue;
                     continue;
                 }
 
@@ -68,6 +92,6 @@ export const chatService = {
             }
         }
 
-        return "SwiftBot is currently resting! ☕ The Google API is reporting a quota limit (Error 429) or connection issue. This usually settles down after a few minutes, but you can always talk with us directly on WhatsApp below!";
+        return "SwiftBot is currently resting! ☕ We're having a connection issue. Please click the button below to talk with us directly on WhatsApp!";
     }
 };

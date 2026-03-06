@@ -6,7 +6,7 @@ import { Button } from './Button';
 export function AIChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'model', content: "Hi! I'm SwiftBot. Need help with a move or transport in Dublin? I can help you with a quick quote!" }
+        { role: 'model', content: "Hello! I am SwiftBot from Swift Transport & Solutions. I can help you with a quick quote for your move or delivery. To get started, may I have your name, please?" }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +20,6 @@ export function AIChatWidget() {
     useEffect(() => {
         if (isOpen) {
             scrollToBottom();
-            if (messages.length > 4) setShowWhatsAppButton(true);
         }
     }, [messages, isOpen]);
 
@@ -34,20 +33,38 @@ export function AIChatWidget() {
         setIsLoading(true);
 
         const history = messages
-            .slice(1) // Skip the initial bot greeting to ensure history starts with 'user'
+            .slice(1) // Skip the initial bot greeting
             .map(msg => ({
                 role: msg.role === 'model' ? 'model' : 'user',
                 parts: [{ text: msg.content }]
             }));
 
-        const aiResponse = await chatService.sendMessage(history, userMsg);
+        let aiResponse = await chatService.sendMessage(history, userMsg);
 
-        setIsLoading(false);
-        setMessages(prev => [...prev, { role: 'model', content: aiResponse }]);
+        // 1. Check for Lead Save Tag: [SAVE_LEAD: {...}]
+        const leadMatch = aiResponse.match(/\[SAVE_LEAD:\s*({.*?})\]/);
+        if (leadMatch) {
+            try {
+                const leadData = JSON.parse(leadMatch[1]);
+                await chatService.saveLead(leadData);
+            } catch (err) {
+                console.error("Failed to parse lead data:", err);
+            }
+        }
 
-        if (messages.length > 3 || aiResponse.toLowerCase().includes('quote') || aiResponse.toLowerCase().includes('human')) {
+        // 2. Check for WhatsApp Trigger: [SHOW_WHATSAPP]
+        if (aiResponse.includes('[SHOW_WHATSAPP]')) {
             setShowWhatsAppButton(true);
         }
+
+        // 3. Sanitize Response (Remove tags)
+        const cleanedResponse = aiResponse
+            .replace(/\[SAVE_LEAD:\s*({.*?})\]/g, '')
+            .replace(/\[SHOW_WHATSAPP\]/g, '')
+            .trim();
+
+        setIsLoading(false);
+        setMessages(prev => [...prev, { role: 'model', content: cleanedResponse || "I'm ready to help! Please let me know how I can assist you further." }]);
     };
 
     const generateWhatsAppLink = () => {
@@ -55,7 +72,7 @@ export function AIChatWidget() {
             .filter(m => m.role === 'user')
             .map(m => m.content)
             .join(' | ');
-        const text = `Hello! I was chatting with your AI assistant. Here is a summary of my request: ${summary}`;
+        const text = `Hello! I was chatting with SwiftBot from Swift Transport & Solutions. Here is a summary of my request: ${summary}`;
         return `https://wa.me/353833758839?text=${encodeURIComponent(text)}`;
     };
 
@@ -67,19 +84,19 @@ export function AIChatWidget() {
                     {/* Header */}
                     <div className="bg-[#8B0000] p-4 text-white flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border border-white/30">
                                 <Bot size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold">SwiftBot</h3>
-                                <p className="text-xs text-red-100 flex items-center gap-1">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                    Online | AI Assistant
+                                <h3 className="font-bold text-sm">SwiftBot</h3>
+                                <p className="text-[10px] text-red-100 flex items-center gap-1 opacity-80">
+                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                                    Swift Transport & Solutions
                                 </p>
                             </div>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-1 rounded-full transition-colors">
-                            <X size={20} />
+                        <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-1.5 rounded-full transition-colors">
+                            <X size={18} />
                         </button>
                     </div>
 
@@ -87,7 +104,7 @@ export function AIChatWidget() {
                     <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50/50">
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${msg.role === 'user'
+                                <div className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-sm transition-all ${msg.role === 'user'
                                     ? 'bg-[#8B0000] text-white rounded-tr-none'
                                     : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
                                     }`}>
@@ -99,7 +116,7 @@ export function AIChatWidget() {
                             <div className="flex justify-start">
                                 <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
                                     <Loader2 size={16} className="animate-spin text-[#8B0000]" />
-                                    <span className="text-xs text-gray-500">SwiftBot is thinking...</span>
+                                    <span className="text-xs text-gray-500">Thinking...</span>
                                 </div>
                             </div>
                         )}
@@ -113,7 +130,7 @@ export function AIChatWidget() {
                                 href={generateWhatsAppLink()}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="mb-3 flex items-center justify-center gap-2 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all transform hover:scale-[1.02] shadow-md"
+                                className="mb-3 flex items-center justify-center gap-2 w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all transform hover:scale-[1.02] shadow-md animate-in fade-in zoom-in duration-300"
                             >
                                 <ExternalLink size={16} />
                                 Talk to a Human on WhatsApp
@@ -124,13 +141,13 @@ export function AIChatWidget() {
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder="Type your message..."
-                                className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#8B0000] outline-none"
+                                placeholder="Write a message..."
+                                className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#8B0000] outline-none transition-all"
                             />
                             <button
                                 type="submit"
                                 disabled={isLoading || !input.trim()}
-                                className="bg-[#8B0000] text-white p-2 rounded-xl disabled:opacity-50 hover:bg-[#640A15] transition-colors"
+                                className="bg-[#8B0000] text-white p-2.5 rounded-xl disabled:opacity-50 hover:bg-[#640A15] transition-colors shadow-sm"
                             >
                                 <Send size={20} />
                             </button>
@@ -155,7 +172,7 @@ export function AIChatWidget() {
                     />
                 )}
                 {!isOpen && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] text-white font-bold animate-bounce">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] text-white font-bold animate-bounce shadow-sm">
                         1
                     </span>
                 )}
