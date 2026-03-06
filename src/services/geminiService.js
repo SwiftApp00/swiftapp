@@ -16,50 +16,50 @@ export const chatService = {
         const apiKey = getApiKey();
         if (!apiKey) return "API Key Missing. Please check Cloudflare settings.";
 
-        try {
-            // Using RAW FETCH to the V1 Stable endpoint to bypass any SDK 404 issues
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        // Strategies to try in order of likelihood to succeed for different accounts/regions
+        const strategies = [
+            { ver: 'v1beta', mod: 'gemini-1.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-1.5-flash-latest' },
+            { ver: 'v1', mod: 'gemini-1.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-pro' }
+        ];
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            role: "user",
-                            parts: [{ text: SYSTEM_INSTRUCTION + "\n\nUser Question: " + userMessage }]
+        for (const strategy of strategies) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/${strategy.ver}/models/${strategy.mod}:generateContent?key=${apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [{ text: SYSTEM_INSTRUCTION + "\n\nUser Message: " + userMessage }]
+                            }
+                        ],
+                        generationConfig: {
+                            maxOutputTokens: 500,
+                            temperature: 0.7,
                         }
-                    ],
-                    generationConfig: {
-                        maxOutputTokens: 500,
-                        temperature: 0.7,
-                    }
-                })
-            });
+                    })
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("Gemini Raw API Error Response:", errorData);
-                throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (aiText) return aiText;
+                }
+
+                const errData = await response.json();
+                console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
+            } catch (e) {
+                console.error(`Gemini connection error (${strategy.mod}):`, e);
             }
-
-            const data = await response.json();
-            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!aiText) throw new Error("Response was empty or blocked by safety filters.");
-
-            return aiText;
-        } catch (error) {
-            console.error("Gemini Raw API Error:", error);
-
-            // Final fallback: try Gemini Pro name if Flash is strictly not available
-            if (error.message.includes("404") || error.message.includes("not found")) {
-                return "Error 404: The model could not be found. Please check if your API Key supports 'gemini-1.5-flash' in Google AI Studio or try creating a new Key.";
-            }
-
-            return `Connection Error: ${error.message.substring(0, 100)}`;
         }
+
+        return "I'm sorry, I'm having trouble connecting to my service right now. Please wait a moment or click the button below to talk with us directly on WhatsApp!";
     }
 };
