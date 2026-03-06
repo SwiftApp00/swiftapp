@@ -59,10 +59,18 @@ export function Sidebar() {
             )}
 
             {/* Sidebar Container */}
-            <div className={`
-                w-64 bg-[#8B0000] text-red-100 flex flex-col h-screen fixed top-0 left-0 shadow-xl z-[58] transition-transform duration-300
-                ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            `}>
+            <div
+                className={`
+                    w-64 text-red-100 flex flex-col h-screen fixed top-0 left-0 shadow-xl z-[58] transition-transform duration-300
+                    ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                `}
+                style={{
+                    backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.92), rgba(139, 0, 0, 0.92)), url("https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/background.png")`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                }}
+            >
                 <div className="h-20 flex items-center px-6 border-b border-red-900/50">
                     <div className="flex items-center gap-2">
                         <img
