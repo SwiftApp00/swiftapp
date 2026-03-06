@@ -1,8 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// We use a function to get the API Key to ensure we handle cases where 
-// env variables might be loaded after the module evaluation (though rare in Vite)
-const getApiKey = () => import.meta.env.VITE_GEMINI_API_KEY;
+// We use a function to get and sanitize the API Key
+const getApiKey = () => {
+    const key = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!key) return null;
+    return key.trim().replace(/['"]/g, ''); // Remove accidental quotes or spaces
+};
 
 const SYSTEM_INSTRUCTION = `
 You are "SwiftBot", the AI assistant for SwiftApp, a premium transport and removal service in Dublin, Ireland.
@@ -40,19 +43,28 @@ export const chatService = {
     async sendMessage(chatHistory, userMessage) {
         const apiKey = getApiKey();
 
-        if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-            console.error("VITE_GEMINI_API_KEY is missing. Check .env or Cloudflare.");
-            return "Sorry, I'm having a technical configuration issue (missing API key). Please contact us directly via WhatsApp.";
+        if (!apiKey) {
+            console.error("VITE_GEMINI_API_KEY is missing. Check .env or Cloudflare Settings.");
+            return "Configuration Error: API Key is missing. Please add VITE_GEMINI_API_KEY to your environment variables.";
         }
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
+
+            // Try initialization without systemInstruction if first attempt fails, 
+            // but let's first fix the model name to be the most compatible one.
             const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+            });
+
+            // We can prepend the system instruction to the first message if needed, 
+            // but keeping it in the config is better. Let's try again with config first.
+            const modelWithInstruction = genAI.getGenerativeModel({
                 model: "gemini-1.5-flash",
                 systemInstruction: SYSTEM_INSTRUCTION
             });
 
-            const chat = model.startChat({
+            const chat = modelWithInstruction.startChat({
                 history: chatHistory,
                 generationConfig: {
                     maxOutputTokens: 500,
@@ -69,15 +81,22 @@ export const chatService = {
         } catch (error) {
             console.error("DETAILED Gemini API Error:", error);
 
-            // Provide more specific feedback if possible
-            if (error.message?.includes('API_KEY_INVALID')) {
-                return "Error: The provided API Key is invalid. Please check your Google AI Studio key.";
-            }
-            if (error.message?.includes('429')) {
-                return "Error: Quota exceeded or too many requests. Please try again in secondary.";
+            // If it's a 404 for gemini-1.5-flash, let's try gemini-pro as a fallback
+            if (error.message?.includes('404') || error.message?.includes('not found')) {
+                try {
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+                    const chat = fallbackModel.startChat({ history: chatHistory });
+                    const result = await chat.sendMessage("System: " + SYSTEM_INSTRUCTION + "\n\nUser: " + userMessage);
+                    const response = await result.response;
+                    return response.text();
+                } catch (fallbackError) {
+                    console.error("Fallback Model also failed:", fallbackError);
+                    return "Connecting Error: The AI model 'gemini-1.5-flash' returned a 404 and fallback also failed. Please check if your API Key has access to Gemini 1.5 models in Google AI Studio.";
+                }
             }
 
-            return "I'm sorry, I'm having a little trouble connecting to my brain right now. Please try again or click the button below to talk directly with us on WhatsApp!";
+            return `I'm sorry, I'm having a little trouble connecting. error: ${error.message?.substring(0, 50)}...`;
         }
     }
 };
