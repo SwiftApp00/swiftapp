@@ -33,7 +33,14 @@ export function Sidebar() {
     return (
         <>
             {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 left-0 w-full h-16 bg-[#8B0000] flex items-center justify-between px-4 z-[60] shadow-md">
+            <div
+                className="md:hidden fixed top-0 left-0 w-full h-16 flex items-center justify-between px-4 z-[60] shadow-md"
+                style={{
+                    backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.8), rgba(139, 0, 0, 0.8)), url("https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/background.png")`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}
+            >
                 <div className="flex items-center gap-2">
                     <img
                         src="https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/logoswift.png"
@@ -65,7 +72,7 @@ export function Sidebar() {
                     ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 `}
                 style={{
-                    backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.92), rgba(139, 0, 0, 0.92)), url("https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/background.png")`,
+                    backgroundImage: `linear-gradient(rgba(139, 0, 0, 0.8), rgba(139, 0, 0, 0.8)), url("https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/background.png")`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat'
