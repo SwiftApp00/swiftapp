@@ -86,8 +86,8 @@ export function AIChatWidget() {
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${msg.role === 'user'
-                                        ? 'bg-[#8B0000] text-white rounded-tr-none'
-                                        : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
+                                    ? 'bg-[#8B0000] text-white rounded-tr-none'
+                                    : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
                                     }`}>
                                     {msg.content}
                                 </div>
@@ -140,7 +140,7 @@ export function AIChatWidget() {
             {/* Floating Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'bg-white text-[#8B0000] rotate-90' : 'bg-[#8B0000]'
+                className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'bg-white text-[#8B0000] rotate-90' : 'bg-transparent'
                     }`}
             >
                 {isOpen ? (
