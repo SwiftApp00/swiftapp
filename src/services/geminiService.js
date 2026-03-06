@@ -19,8 +19,9 @@ GOAL: Qualify leads for removals or deliveries by capturing:
 
 CRITICAL RULES:
 - Ask only ONE question at a time.
-- DO NOT repeat your name or company in every message. Introduce yourself only if asked or at the very start (the first message is already handled by the UI).
-- Use a natural, conversational style.
+- DO NOT repeat your name or company in every message.
+- DO NOT ask for information that the user has ALREADY provided in the chat history.
+- Use a natural, conversational style. No bot-like mechanical repetition.
 - If the user asks to speak to a human or asks something you don't know, append "[SHOW_WHATSAPP]" to your message.
 - Once (and only once) you have ALL 5 pieces of information, append a hidden lead tag at the very end of your message in exactly this format:
 [SAVE_LEAD: {"name": "...", "items_to_move": "...", "pickup_address": "...", "delivery_address": "...", "preferred_date": "YYYY-MM-DD"}]
@@ -57,37 +58,37 @@ export const chatService = {
 
         // Verified available models based on user account list
         const strategies = [
-            { ver: 'v1beta', mod: 'gemini-2.5-flash' },       // Newest Flash
-            { ver: 'v1beta', mod: 'gemini-2.0-flash-lite' },  // Lite version (better quota usually)
-            { ver: 'v1beta', mod: 'gemini-3-flash-preview' }, // Preview 3.0
-            { ver: 'v1beta', mod: 'gemini-flash-latest' },    // Latest generic
-            { ver: 'v1beta', mod: 'gemini-2.0-flash' }        // Fallback (returning 429 currently)
+            { ver: 'v1beta', mod: 'gemini-2.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-2.0-flash-lite' },
+            { ver: 'v1beta', mod: 'gemini-3-flash-preview' },
+            { ver: 'v1beta', mod: 'gemini-flash-latest' }
         ];
 
         for (const strategy of strategies) {
             try {
                 const url = `https://generativelanguage.googleapis.com/${strategy.ver}/models/${strategy.mod}:generateContent?key=${apiKey}`;
 
+                // Format contents with official system instructions and alternating turns
+                const body = {
+                    system_instruction: {
+                        parts: [{ text: SYSTEM_INSTRUCTION }]
+                    },
+                    contents: [
+                        ...chatHistory,
+                        { role: "user", parts: [{ text: userMessage }] }
+                    ],
+                    generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
+                };
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [
-                            {
-                                role: "user",
-                                parts: [{ text: SYSTEM_INSTRUCTION + "\n\nUser Message: " + userMessage }]
-                            }
-                        ],
-                        generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
-                    if (response.status === 429) {
-                        console.warn(`Quota exceeded for ${strategy.mod}, trying next...`);
-                        continue;
-                    }
+                    if (response.status === 429) continue;
                     console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
                     continue;
                 }
