@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 const getApiKey = () => {
     const key = import.meta.env.VITE_GEMINI_API_KEY;
     if (!key) return null;
@@ -19,37 +17,49 @@ export const chatService = {
         if (!apiKey) return "API Key Missing. Please check Cloudflare settings.";
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
+            // Using RAW FETCH to the V1 Stable endpoint to bypass any SDK 404 issues
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-            // Primary attempt: using 'gemini-pro' (Gemini 1.0) which is the most compatible globally
-            const model = genAI.getGenerativeModel({
-                model: "gemini-pro",
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [{ text: SYSTEM_INSTRUCTION + "\n\nUser Question: " + userMessage }]
+                        }
+                    ],
+                    generationConfig: {
+                        maxOutputTokens: 500,
+                        temperature: 0.7,
+                    }
+                })
             });
 
-            const chat = model.startChat({
-                history: chatHistory,
-                generationConfig: { maxOutputTokens: 500 },
-            });
-
-            // For gemini-pro (v1), we sometimes need to prepend instructions if using startChat
-            // but let's try the standard way first.
-            const result = await chat.sendMessage(SYSTEM_INSTRUCTION + "\n\nUser Message: " + userMessage);
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            console.error("Gemini API Error (Primary Failed):", error);
-
-            // Fallback: Use the exact 'gemini-1.5-flash' but with simpler call
-            try {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                const result = await model.generateContent(SYSTEM_INSTRUCTION + "\n\n" + userMessage);
-                const response = await result.response;
-                return response.text();
-            } catch (innerError) {
-                console.error("All models failed again:", innerError);
-                return `Error context: ${innerError.message?.includes('404') ? 'Model not found for this API Key. Please check if your Google project has the Generative Language API enabled.' : innerError.message}`;
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Gemini Raw API Error Response:", errorData);
+                throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
             }
+
+            const data = await response.json();
+            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!aiText) throw new Error("Response was empty or blocked by safety filters.");
+
+            return aiText;
+        } catch (error) {
+            console.error("Gemini Raw API Error:", error);
+
+            // Final fallback: try Gemini Pro name if Flash is strictly not available
+            if (error.message.includes("404") || error.message.includes("not found")) {
+                return "Error 404: The model could not be found. Please check if your API Key supports 'gemini-1.5-flash' in Google AI Studio or try creating a new Key.";
+            }
+
+            return `Connection Error: ${error.message.substring(0, 100)}`;
         }
     }
 };
