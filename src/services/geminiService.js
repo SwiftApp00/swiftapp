@@ -18,9 +18,11 @@ export const chatService = {
 
         // Strategies to try in order of likelihood to succeed for different accounts/regions
         const strategies = [
+            { ver: 'v1beta', mod: 'gemini-2.0-flash' },       // Newer Flash model
+            { ver: 'v1beta', mod: 'gemini-2.0-flash-exp' },   // Experimental 2.0
             { ver: 'v1beta', mod: 'gemini-1.5-flash' },
-            { ver: 'v1beta', mod: 'gemini-1.5-flash-latest' },
             { ver: 'v1', mod: 'gemini-1.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-1.5-flash-8b' },    // Flash-Lite / 8B version
             { ver: 'v1beta', mod: 'gemini-pro' }
         ];
 
@@ -53,13 +55,13 @@ export const chatService = {
                     if (aiText) return aiText;
                 }
 
-                const errData = await response.json();
+                const errData = await response.json().catch(() => ({}));
                 console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
             } catch (e) {
                 console.error(`Gemini connection error (${strategy.mod}):`, e);
             }
         }
 
-        return "I'm sorry, I'm having trouble connecting to my service right now. Please wait a moment or click the button below to talk with us directly on WhatsApp!";
+        return "I'm sorry, I'm having trouble connecting to my service right now. Please verify if your API Key is active in Google AI Studio or click the button below to talk with us directly on WhatsApp!";
     }
 };
