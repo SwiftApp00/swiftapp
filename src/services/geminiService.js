@@ -41,8 +41,8 @@ export const chatService = {
         const apiKey = getApiKey();
 
         if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-            console.error("VITE_GEMINI_API_KEY is missing or undefined. Check your .env file or Cloudflare Environment Variables.");
-            return "Configuration Error: API Key is missing. If you are in production, make sure to add VITE_GEMINI_API_KEY to your Cloudflare/Vercel environment variables.";
+            console.error("VITE_GEMINI_API_KEY is missing. Check .env or Cloudflare.");
+            return "Sorry, I'm having a technical configuration issue (missing API key). Please contact us directly via WhatsApp.";
         }
 
         try {
