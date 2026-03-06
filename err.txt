@@ -1,0 +1,67 @@
+
+> swiftapp@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m???[39m 46 modules transformed.
+node.exe : 
+[31m???[39m Build 
+failed in 528ms
+No linha:1 caractere:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: ([31m???[39m   
+  Build failed in 5    
+28ms:String) [], R    
+emoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+[31merror during 
+build:
+[31mCould not resolve 
+"../services/supabaseCl
+ient" from "src/compone
+nts/layout/ProtectedRou
+te.jsx"[31m
+file: [36mC:/Users/Ren
+ato/Documents/Produtos/
+SwiftApp/src/components
+/layout/ProtectedRoute.
+jsx[31m
+    at getRollupError (
+file:///C:/Users/Renato
+/Documents/Produtos/Swi
+ftApp/node_modules/roll
+up/dist/es/shared/parse
+Ast.js:402:41)
+    at error (file:///C
+:/Users/Renato/Document
+s/Produtos/SwiftApp/nod
+e_modules/rollup/dist/e
+s/shared/parseAst.js:39
+8:42)
+    at ModuleLoader.han
+dleInvalidResolvedId (f
+ile:///C:/Users/Renato/
+Documents/Produtos/Swif
+tApp/node_modules/rollu
+p/dist/es/shared/node-e
+ntry.js:21710:24)
+    at file:///C:/Users
+/Renato/Documents/Produ
+tos/SwiftApp/node_modul
+es/rollup/dist/es/share
+d/node-entry.js:21670:2
+6[39m
