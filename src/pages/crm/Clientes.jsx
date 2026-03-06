@@ -4,7 +4,7 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2 } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2 } from 'lucide-react';
 
 export function Clientes() {
     const [clients, setClients] = useState([]);
@@ -12,6 +12,7 @@ export function Clientes() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSearchingEircode, setIsSearchingEircode] = useState(false);
+    const [editingClient, setEditingClient] = useState(null);
 
     const [formData, setFormData] = useState({
         identification: '',
@@ -39,15 +40,24 @@ export function Clientes() {
         setLoading(false);
     };
 
+    const handleRowClick = (client) => {
+        setEditingClient(client);
+        setFormData({
+            identification: client.identification || '',
+            identification_type: client.identification_type || '',
+            name: client.name || '',
+            eircode: client.eircode || '',
+            address: client.address || '',
+            whatsapp: client.whatsapp || '',
+            email: client.email || '',
+            instagram: client.instagram || ''
+        });
+        setIsModalOpen(true);
+    };
+
     const handleIdChange = (e) => {
         const val = e.target.value.toUpperCase();
         setFormData(prev => ({ ...prev, identification: val }));
-
-        // Logic: 
-        // Company: 1-6 digits
-        // Individual: 7 numbers + 1-2 letters
-        const digitsOnly = val.replace(/[^0-9]/g, '');
-        const lettersOnly = val.replace(/[^A-Z]/g, '');
 
         if (val.length > 0) {
             if (/^\d{1,6}$/.test(val)) {
@@ -69,7 +79,6 @@ export function Clientes() {
         }
         setFormData(prev => ({ ...prev, eircode: val }));
 
-        // Nominatim Lookup when fully typed (7 characters excluding space)
         const cleanVal = val.replace(/\s/g, '');
         if (cleanVal.length === 7) {
             searchAddress(cleanVal);
@@ -97,32 +106,40 @@ export function Clientes() {
         setIsSubmitting(true);
 
         try {
-            const { error } = await supabase
-                .from('clients')
-                .insert([{
-                    name: formData.name,
-                    identification: formData.identification,
-                    identification_type: formData.identification_type,
-                    eircode: formData.eircode,
-                    address: formData.address,
-                    whatsapp: formData.whatsapp,
-                    email: formData.email,
-                    instagram: formData.instagram
-                }]);
+            if (editingClient) {
+                // Update
+                const { error } = await supabase
+                    .from('clients')
+                    .update({
+                        name: formData.name,
+                        identification: formData.identification,
+                        identification_type: formData.identification_type,
+                        eircode: formData.eircode,
+                        address: formData.address,
+                        whatsapp: formData.whatsapp,
+                        email: formData.email,
+                        instagram: formData.instagram
+                    })
+                    .eq('id', editingClient.id);
+                if (error) throw error;
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('clients')
+                    .insert([{
+                        name: formData.name,
+                        identification: formData.identification,
+                        identification_type: formData.identification_type,
+                        eircode: formData.eircode,
+                        address: formData.address,
+                        whatsapp: formData.whatsapp,
+                        email: formData.email,
+                        instagram: formData.instagram
+                    }]);
+                if (error) throw error;
+            }
 
-            if (error) throw error;
-
-            setIsModalOpen(false);
-            setFormData({
-                identification: '',
-                identification_type: '',
-                name: '',
-                eircode: '',
-                address: '',
-                whatsapp: '',
-                email: '',
-                instagram: ''
-            });
+            handleCloseModal();
             fetchClients();
         } catch (err) {
             console.error("Save client error:", err);
@@ -130,6 +147,40 @@ export function Clientes() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleDelete = async () => {
+        if (!editingClient || !window.confirm("Are you sure you want to delete this client?")) return;
+        setIsSubmitting(true);
+        try {
+            const { error } = await supabase
+                .from('clients')
+                .delete()
+                .eq('id', editingClient.id);
+            if (error) throw error;
+            handleCloseModal();
+            fetchClients();
+        } catch (err) {
+            console.error("Delete client error:", err);
+            alert("Error deleting client.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingClient(null);
+        setFormData({
+            identification: '',
+            identification_type: '',
+            name: '',
+            eircode: '',
+            address: '',
+            whatsapp: '',
+            email: '',
+            instagram: ''
+        });
     };
 
     const columns = [
@@ -145,7 +196,7 @@ export function Clientes() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-                    <p className="text-sm text-gray-500">Manage your customers and business partners</p>
+                    <p className="text-sm text-gray-500">Manage your customers and business partners (Click a row to edit)</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
@@ -163,13 +214,14 @@ export function Clientes() {
                     columns={columns}
                     data={clients}
                     keyExtractor={(row) => row.id}
+                    onRowClick={handleRowClick}
                 />
             )}
 
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Register New Client"
+                onClose={handleCloseModal}
+                title={editingClient ? "Edit Client" : "Register New Client"}
             >
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-4 pt-2">
@@ -246,27 +298,38 @@ export function Clientes() {
                         </div>
                     </div>
 
-                    <div className="flex gap-3 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => setIsModalOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            className="flex-1"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <div className="flex items-center gap-2">
+                    <div className="flex gap-3 pt-4 border-t border-gray-100">
+                        {editingClient && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="flex items-center gap-2 text-red-600 border-red-100 hover:bg-red-50"
+                                onClick={handleDelete}
+                                disabled={isSubmitting}
+                            >
+                                <Trash2 size={18} />
+                                Delete
+                            </Button>
+                        )}
+                        <div className="flex-1 flex gap-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="flex-1"
+                                onClick={handleCloseModal}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="flex-1"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
                                     <Loader2 size={18} className="animate-spin" />
-                                    Saving...
-                                </div>
-                            ) : 'Register Client'}
-                        </Button>
+                                ) : (editingClient ? 'Update Client' : 'Register Client')}
+                            </Button>
+                        </div>
                     </div>
                 </form>
             </Modal>

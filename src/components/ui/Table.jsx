@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Table({ columns, data, keyExtractor, actions }) {
+export function Table({ columns, data, keyExtractor, actions, onRowClick }) {
     return (
         <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full text-left text-sm text-gray-600">
@@ -23,7 +23,11 @@ export function Table({ columns, data, keyExtractor, actions }) {
                         </tr>
                     ) : (
                         data.map((row, idx) => (
-                            <tr key={keyExtractor(row, idx)} className="hover:bg-gray-50 transition-colors">
+                            <tr
+                                key={keyExtractor(row, idx)}
+                                className={`transition-colors ${onRowClick ? 'hover:bg-gray-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                                onClick={() => onRowClick && onRowClick(row)}
+                            >
                                 {columns.map((col, colIdx) => (
                                     <td key={colIdx} className="px-6 py-4">
                                         {col.render ? col.render(row) : row[col.accessor]}
