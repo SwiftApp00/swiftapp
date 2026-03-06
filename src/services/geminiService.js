@@ -49,19 +49,25 @@ export const chatService = {
                     })
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (aiText) return aiText;
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    // If we hit a quota limit (429), log it and try the NEXT model in the list
+                    if (response.status === 429) {
+                        console.warn(`Quota exceeded for ${strategy.mod}, trying next...`);
+                        continue;
+                    }
+                    console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
+                    continue;
                 }
 
-                const errData = await response.json().catch(() => ({}));
-                console.warn(`Gemini strategy ${strategy.ver}/${strategy.mod} failed:`, errData.error?.message);
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (aiText) return aiText;
             } catch (e) {
                 console.error(`Gemini connection error (${strategy.mod}):`, e);
             }
         }
 
-        return "I'm sorry, I'm having trouble connecting to my service right now. Please verify if your API Key is active in Google AI Studio or click the button below to talk with us directly on WhatsApp!";
+        return "SwiftBot is currently resting! ☕ The Google API is reporting a quota limit (Error 429) or connection issue. This usually settles down after a few minutes, but you can always talk with us directly on WhatsApp below!";
     }
 };
