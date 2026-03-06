@@ -33,10 +33,12 @@ export function AIChatWidget() {
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setIsLoading(true);
 
-        const history = messages.map(msg => ({
-            role: msg.role === 'model' ? 'model' : 'user',
-            parts: [{ text: msg.content }]
-        }));
+        const history = messages
+            .slice(1) // Skip the initial bot greeting to ensure history starts with 'user'
+            .map(msg => ({
+                role: msg.role === 'model' ? 'model' : 'user',
+                parts: [{ text: msg.content }]
+            }));
 
         const aiResponse = await chatService.sendMessage(history, userMsg);
 
