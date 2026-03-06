@@ -21,11 +21,9 @@ export const chatService = {
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
 
-            // Using 'gemini-1.5-flash' which corresponds to "Gemini Flash Latest" in many regions
-            // or 'gemini-1.5-flash-latest' for the explicit pointer.
+            // Primary attempt: using 'gemini-pro' (Gemini 1.0) which is the most compatible globally
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash-latest",
-                systemInstruction: SYSTEM_INSTRUCTION
+                model: "gemini-pro",
             });
 
             const chat = model.startChat({
@@ -33,22 +31,24 @@ export const chatService = {
                 generationConfig: { maxOutputTokens: 500 },
             });
 
-            const result = await chat.sendMessage(userMessage);
+            // For gemini-pro (v1), we sometimes need to prepend instructions if using startChat
+            // but let's try the standard way first.
+            const result = await chat.sendMessage(SYSTEM_INSTRUCTION + "\n\nUser Message: " + userMessage);
             const response = await result.response;
             return response.text();
         } catch (error) {
-            console.error("Gemini API Error:", error);
+            console.error("Gemini API Error (Primary Failed):", error);
 
-            // Fallback to the most basic model name if the latest alias fails
+            // Fallback: Use the exact 'gemini-1.5-flash' but with simpler call
             try {
                 const genAI = new GoogleGenerativeAI(apiKey);
                 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                const result = await model.generateContent(SYSTEM_INSTRUCTION + "\n\nUser: " + userMessage);
+                const result = await model.generateContent(SYSTEM_INSTRUCTION + "\n\n" + userMessage);
                 const response = await result.response;
                 return response.text();
             } catch (innerError) {
-                console.error("All models failed:", innerError);
-                return `Connection Error: ${innerError.message?.substring(0, 100)}`;
+                console.error("All models failed again:", innerError);
+                return `Error context: ${innerError.message?.includes('404') ? 'Model not found for this API Key. Please check if your Google project has the Generative Language API enabled.' : innerError.message}`;
             }
         }
     }
