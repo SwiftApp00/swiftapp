@@ -41,6 +41,9 @@ export function AIChatWidget() {
 
         let aiResponse = await chatService.sendMessage(history, userMsg);
 
+        // Artificial human-like delay (minimum 1.5s)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
         // 1. Check for Lead Save Tag: [SAVE_LEAD: {...}]
         const leadMatch = aiResponse.match(/\[SAVE_LEAD:\s*({.*?})\]/);
         if (leadMatch) {
@@ -114,9 +117,10 @@ export function AIChatWidget() {
                         ))}
                         {isLoading && (
                             <div className="flex justify-start">
-                                <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
-                                    <Loader2 size={16} className="animate-spin text-[#8B0000]" />
-                                    <span className="text-xs text-gray-500">Thinking...</span>
+                                <div className="bg-white border border-gray-100 p-3 px-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-[pulse_1s_infinite_0ms]" />
+                                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-[pulse_1s_infinite_200ms]" />
+                                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-[pulse_1s_infinite_400ms]" />
                                 </div>
                             </div>
                         )}
