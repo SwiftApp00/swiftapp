@@ -88,8 +88,8 @@ export function AIChatWidget() {
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${msg.role === 'user'
-                                        ? 'bg-[#8B0000] text-white rounded-tr-none'
-                                        : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
+                                    ? 'bg-[#8B0000] text-white rounded-tr-none'
+                                    : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
                                     }`}>
                                     {msg.content}
                                 </div>
@@ -142,10 +142,18 @@ export function AIChatWidget() {
             {/* Floating Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'bg-white text-[#8B0000] rotate-90' : 'bg-[#8B0000] text-white'
+                className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'bg-white text-[#8B0000] rotate-90' : 'bg-[#8B0000]'
                     }`}
             >
-                {isOpen ? <X size={32} /> : <MessageCircle size={32} />}
+                {isOpen ? (
+                    <X size={32} />
+                ) : (
+                    <img
+                        src="https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/icone_whatsapp.png"
+                        alt="WhatsApp"
+                        className="w-16 h-16 drop-shadow-2xl"
+                    />
+                )}
                 {!isOpen && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] text-white font-bold animate-bounce">
                         1
