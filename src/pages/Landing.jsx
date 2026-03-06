@@ -15,6 +15,7 @@ import {
     MessageCircle,
     CheckCircle2
 } from 'lucide-react';
+import { AIChatWidget } from '../components/ui/AIChatWidget';
 
 const services = [
     { icon: Home, title: 'Home & Office Moves', desc: 'Stress-free residential and corporate relocation.' },
@@ -34,10 +35,7 @@ export function Landing() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowWhatsApp(true);
-        }, 3000);
-        return () => clearTimeout(timer);
+        // WhatsApp button logic removed as it's now handled by AIChatWidget
     }, []);
 
     const handleInputChange = (e) => {
@@ -190,29 +188,7 @@ export function Landing() {
 
             <Footer />
 
-            {/* Floating WhatsApp Button */}
-            <div className={`fixed bottom-6 flex flex-col items-end right-6 z-50 transition-all duration-500 transform ${showWhatsApp ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                {/* Chat Bubble Tooltip */}
-                <div className="bg-white text-gray-800 text-sm p-3 rounded-lg shadow-xl mb-3 border border-gray-100 relative max-w-[200px] animate-bounce">
-                    Hi! Need help with a move? We can give you a quick quote.
-                    <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-b border-r border-gray-100 transform rotate-45" />
-                </div>
-
-                {/* Main Button */}
-                <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:scale-110 transition-transform flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-green-300 rounded-full animate-heartbeat"
-                    aria-label="Chat on WhatsApp"
-                >
-                    <img
-                        src="https://atbocciidldnhaclyerh.supabase.co/storage/v1/object/public/assets/icone_whatsapp.png"
-                        alt="WhatsApp"
-                        className="w-16 h-16 drop-shadow-2xl"
-                    />
-                </a>
-            </div>
+            <AIChatWidget />
         </div>
     );
 }
