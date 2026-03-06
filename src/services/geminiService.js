@@ -16,14 +16,14 @@ export const chatService = {
         const apiKey = getApiKey();
         if (!apiKey) return "API Key Missing. Please check Cloudflare settings.";
 
-        // Strategies to try in order of likelihood to succeed for different accounts/regions
+        // Strategies to try based on the user's specific AI Studio list (Gemini 3.x/2.x)
         const strategies = [
-            { ver: 'v1beta', mod: 'gemini-2.0-flash' },       // Newer Flash model
-            { ver: 'v1beta', mod: 'gemini-2.0-flash-exp' },   // Experimental 2.0
+            { ver: 'v1beta', mod: 'gemini-2.0-flash' },
+            { ver: 'v1beta', mod: 'gemini-2.0-flash-lite-preview-02-05' },
+            { ver: 'v1beta', mod: 'gemini-3-flash-preview' },
+            { ver: 'v1beta', mod: 'gemini-3.1-flash-lite-preview' },
             { ver: 'v1beta', mod: 'gemini-1.5-flash' },
-            { ver: 'v1', mod: 'gemini-1.5-flash' },
-            { ver: 'v1beta', mod: 'gemini-1.5-flash-8b' },    // Flash-Lite / 8B version
-            { ver: 'v1beta', mod: 'gemini-pro' }
+            { ver: 'v1', mod: 'gemini-1.5-flash' }
         ];
 
         for (const strategy of strategies) {
