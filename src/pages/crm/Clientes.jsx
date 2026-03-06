@@ -119,42 +119,49 @@ export function Clientes() {
         else setIsSearchingDeliveryEircode(true);
 
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${eircode},Ireland&format=json&addressdetails=1`);
+            // Searching with countrycodes limit for better precision in Ireland
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${eircode}&countrycodes=ie&format=json&addressdetails=1`);
             const data = await res.json();
+
             if (data && data.length > 0) {
                 const result = data[0];
                 const addr = result.address;
 
-                // Mapping logic
+                // Improved Mapping logic for Irish structure
                 const mappedData = {
-                    street: addr.road || addr.pedestrian || addr.cycleway || '',
+                    street: addr.road || addr.pedestrian || addr.cycleway || addr.path || '',
                     house_number: addr.house_number || '',
-                    city: addr.city || addr.town || addr.village || addr.suburb || '',
-                    county: addr.county || '',
-                    area: addr.neighbourhood || addr.suburb || ''
+                    city: addr.city || addr.town || addr.village || addr.municipality || addr.city_district || '',
+                    county: addr.county || addr.state || '',
+                    area: addr.suburb || addr.neighbourhood || addr.quarter || addr.hamlet || ''
                 };
+
+                // Fallback for City if the above are missing
+                if (!mappedData.city && addr.county) {
+                    mappedData.city = addr.county.replace('County ', '');
+                }
 
                 if (type === 'main') {
                     setFormData(prev => ({
                         ...prev,
-                        street: mappedData.street,
-                        house_number: mappedData.house_number,
-                        city: mappedData.city,
-                        county: mappedData.county,
-                        area: mappedData.area
+                        street: mappedData.street || prev.street,
+                        house_number: mappedData.house_number || prev.house_number,
+                        city: mappedData.city || prev.city,
+                        county: mappedData.county || prev.county,
+                        area: mappedData.area || prev.area
                     }));
                 } else {
                     setFormData(prev => ({
                         ...prev,
-                        delivery_street: mappedData.street,
-                        delivery_house_number: mappedData.house_number,
-                        delivery_city: mappedData.city,
-                        delivery_county: mappedData.county,
-                        delivery_area: mappedData.area
+                        delivery_street: mappedData.street || prev.delivery_street,
+                        delivery_house_number: mappedData.house_number || prev.delivery_house_number,
+                        delivery_city: mappedData.city || prev.delivery_city,
+                        delivery_county: mappedData.county || prev.delivery_county,
+                        delivery_area: mappedData.area || prev.delivery_area
                     }));
                 }
             } else {
-                alert(`Eircode ${eircode} not found.`);
+                console.warn(`Eircode ${eircode} not found in Nominatim.`);
             }
         } catch (err) {
             console.error("Nominatim error:", err);
