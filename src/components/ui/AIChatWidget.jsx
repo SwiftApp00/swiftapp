@@ -6,7 +6,7 @@ import { Button } from './Button';
 export function AIChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'model', content: "Olá! Sou o SwiftBot. Precisa de ajuda com uma mudança ou transporte em Dublin? Posso te ajudar com um orçamento rápido!" }
+        { role: 'model', content: "Hi! I'm SwiftBot. Need help with a move or transport in Dublin? I can help you with a quick quote!" }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ export function AIChatWidget() {
         setIsLoading(false);
         setMessages(prev => [...prev, { role: 'model', content: aiResponse }]);
 
-        if (messages.length > 3 || aiResponse.toLowerCase().includes('orçamento') || aiResponse.toLowerCase().includes('humano') || aiResponse.toLowerCase().includes('atendente')) {
+        if (messages.length > 3 || aiResponse.toLowerCase().includes('quote') || aiResponse.toLowerCase().includes('human')) {
             setShowWhatsAppButton(true);
         }
     };
@@ -53,7 +53,7 @@ export function AIChatWidget() {
             .filter(m => m.role === 'user')
             .map(m => m.content)
             .join(' | ');
-        const text = `Olá! Estava conversando com seu assistente de IA. Aqui está um resumo do meu pedido: ${summary}`;
+        const text = `Hello! I was chatting with your AI assistant. Here is a summary of my request: ${summary}`;
         return `https://wa.me/353833758839?text=${encodeURIComponent(text)}`;
     };
 
@@ -72,7 +72,7 @@ export function AIChatWidget() {
                                 <h3 className="font-bold">SwiftBot</h3>
                                 <p className="text-xs text-red-100 flex items-center gap-1">
                                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                    Online | Assistente IA
+                                    Online | AI Assistant
                                 </p>
                             </div>
                         </div>
@@ -97,7 +97,7 @@ export function AIChatWidget() {
                             <div className="flex justify-start">
                                 <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
                                     <Loader2 size={16} className="animate-spin text-[#8B0000]" />
-                                    <span className="text-xs text-gray-500">SwiftBot está pensando...</span>
+                                    <span className="text-xs text-gray-500">SwiftBot is thinking...</span>
                                 </div>
                             </div>
                         )}
@@ -114,7 +114,7 @@ export function AIChatWidget() {
                                 className="mb-3 flex items-center justify-center gap-2 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all transform hover:scale-[1.02] shadow-md"
                             >
                                 <ExternalLink size={16} />
-                                Falar com Atendente no WhatsApp
+                                Talk to a Human on WhatsApp
                             </a>
                         )}
                         <form onSubmit={handleSend} className="flex gap-2">
@@ -122,7 +122,7 @@ export function AIChatWidget() {
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder="Digite sua mensagem..."
+                                placeholder="Type your message..."
                                 className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#8B0000] outline-none"
                             />
                             <button
