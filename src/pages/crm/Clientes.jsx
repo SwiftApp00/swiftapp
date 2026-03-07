@@ -14,6 +14,7 @@ export function Clientes() {
     const [isSearchingEircode, setIsSearchingEircode] = useState(false);
     const [isSearchingDeliveryEircode, setIsSearchingDeliveryEircode] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const [formData, setFormData] = useState({
         identification: '',
@@ -123,6 +124,8 @@ export function Clientes() {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${eircode}&countrycodes=ie&format=json&addressdetails=1`);
             const data = await res.json();
 
+            if (type === 'main') setHasSearched(true);
+
             if (data && data.length > 0) {
                 const result = data[0];
                 const addr = result.address;
@@ -165,6 +168,7 @@ export function Clientes() {
             }
         } catch (err) {
             console.error("Nominatim error:", err);
+            if (type === 'main') setHasSearched(true);
         } finally {
             if (type === 'main') setIsSearchingEircode(false);
             else setIsSearchingDeliveryEircode(false);
@@ -240,6 +244,7 @@ export function Clientes() {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingClient(null);
+        setHasSearched(false);
         setFormData({
             identification: '', identification_type: '', name: '',
             eircode: '', street: '', house_number: '', apartment: '', area: '', city: '', county: '',
@@ -251,7 +256,7 @@ export function Clientes() {
     const isIdValid = formData.identification_type === 'Company / Legal Entity' || formData.identification_type === 'Individual / Natural Person';
     const isEircodeValid = formData.eircode.replace(/\s/g, '').length === 7;
     const showEircode = isIdValid || editingClient;
-    const showRestOfForm = (isEircodeValid && formData.street) || editingClient;
+    const showRestOfForm = (isEircodeValid && hasSearched) || editingClient;
 
     const columns = [
         { header: 'Date', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
