@@ -4,7 +4,148 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
+
+// Irish Eircode Routing Key → City / County mapping
+// The first 3 characters of an Eircode identify the area
+const EIRCODE_ROUTING_KEYS = {
+    'A41': { city: 'Portlaoise', county: 'County Laois' },
+    'A63': { city: 'Portlaoise', county: 'County Laois' },
+    'A67': { city: 'Mountmellick', county: 'County Laois' },
+    'A75': { city: 'Abbeyleix', county: 'County Laois' },
+    'A81': { city: 'Tullamore', county: 'County Offaly' },
+    'A83': { city: 'Birr', county: 'County Offaly' },
+    'A85': { city: 'Edenderry', county: 'County Offaly' },
+    'A86': { city: 'Banagher', county: 'County Offaly' },
+    'A91': { city: 'Ennis', county: 'County Clare' },
+    'A92': { city: 'Longford', county: 'County Longford' },
+    'A94': { city: 'Blackrock', county: 'County Dublin' },
+    'A96': { city: 'Glenageary', county: 'County Dublin' },
+    'A98': { city: 'Bray', county: 'County Wicklow' },
+    'C15': { city: 'Maynooth', county: 'County Kildare' },
+    'D01': { city: 'Dublin 1', county: 'County Dublin' },
+    'D02': { city: 'Dublin 2', county: 'County Dublin' },
+    'D03': { city: 'Dublin 3', county: 'County Dublin' },
+    'D04': { city: 'Dublin 4', county: 'County Dublin' },
+    'D05': { city: 'Dublin 5', county: 'County Dublin' },
+    'D06': { city: 'Dublin 6', county: 'County Dublin' },
+    'D6W': { city: 'Dublin 6W', county: 'County Dublin' },
+    'D07': { city: 'Dublin 7', county: 'County Dublin' },
+    'D08': { city: 'Dublin 8', county: 'County Dublin' },
+    'D09': { city: 'Dublin 9', county: 'County Dublin' },
+    'D10': { city: 'Dublin 10', county: 'County Dublin' },
+    'D11': { city: 'Dublin 11', county: 'County Dublin' },
+    'D12': { city: 'Dublin 12', county: 'County Dublin' },
+    'D13': { city: 'Dublin 13', county: 'County Dublin' },
+    'D14': { city: 'Dublin 14', county: 'County Dublin' },
+    'D15': { city: 'Dublin 15', county: 'County Dublin' },
+    'D16': { city: 'Dublin 16', county: 'County Dublin' },
+    'D17': { city: 'Dublin 17', county: 'County Dublin' },
+    'D18': { city: 'Dublin 18', county: 'County Dublin' },
+    'D20': { city: 'Dublin 20', county: 'County Dublin' },
+    'D22': { city: 'Dublin 22', county: 'County Dublin' },
+    'D24': { city: 'Dublin 24', county: 'County Dublin' },
+    'E21': { city: 'Baltinglass', county: 'County Wicklow' },
+    'E25': { city: 'Arklow', county: 'County Wicklow' },
+    'E32': { city: 'Athy', county: 'County Kildare' },
+    'E34': { city: 'Castledermot', county: 'County Kildare' },
+    'E41': { city: 'Carlow', county: 'County Carlow' },
+    'E45': { city: 'Bagenalstown', county: 'County Carlow' },
+    'E53': { city: 'Enniscorthy', county: 'County Wexford' },
+    'E91': { city: 'Wexford', county: 'County Wexford' },
+    'F12': { city: 'Castlebar', county: 'County Mayo' },
+    'F23': { city: 'Claremorris', county: 'County Mayo' },
+    'F25': { city: 'Westport', county: 'County Mayo' },
+    'F26': { city: 'Ballina', county: 'County Mayo' },
+    'F28': { city: 'Belmullet', county: 'County Mayo' },
+    'F31': { city: 'Ballinrobe', county: 'County Mayo' },
+    'F35': { city: 'Knock', county: 'County Mayo' },
+    'F42': { city: 'Ballaghaderreen', county: 'County Roscommon' },
+    'F45': { city: 'Roscommon', county: 'County Roscommon' },
+    'F52': { city: 'Strokestown', county: 'County Roscommon' },
+    'F56': { city: 'Castlerea', county: 'County Roscommon' },
+    'F91': { city: 'Galway', county: 'County Galway' },
+    'F92': { city: 'Galway', county: 'County Galway' },
+    'F93': { city: 'Galway', county: 'County Galway' },
+    'F94': { city: 'Galway', county: 'County Galway' },
+    'H12': { city: 'Sligo', county: 'County Sligo' },
+    'H14': { city: 'Tubbercurry', county: 'County Sligo' },
+    'H16': { city: 'Ballymote', county: 'County Sligo' },
+    'H18': { city: 'Carrick-on-Shannon', county: 'County Leitrim' },
+    'H23': { city: 'Cavan', county: 'County Cavan' },
+    'H53': { city: 'Monaghan', county: 'County Monaghan' },
+    'H54': { city: 'Clones', county: 'County Monaghan' },
+    'H62': { city: 'Dundalk', county: 'County Louth' },
+    'H65': { city: 'Navan', county: 'County Meath' },
+    'H71': { city: 'Donegal', county: 'County Donegal' },
+    'H91': { city: 'Galway', county: 'County Galway' },
+    'K32': { city: 'Swords', county: 'County Dublin' },
+    'K34': { city: 'Skerries', county: 'County Dublin' },
+    'K36': { city: 'Malahide', county: 'County Dublin' },
+    'K45': { city: 'Naas', county: 'County Kildare' },
+    'K56': { city: 'Clane', county: 'County Kildare' },
+    'K67': { city: 'Newbridge', county: 'County Kildare' },
+    'K78': { city: 'Kildare', county: 'County Kildare' },
+    'N37': { city: 'Athlone', county: 'County Westmeath' },
+    'N39': { city: 'Moate', county: 'County Westmeath' },
+    'N41': { city: 'Mullingar', county: 'County Westmeath' },
+    'N91': { city: 'Mullingar', county: 'County Westmeath' },
+    'P12': { city: 'Cork', county: 'County Cork' },
+    'P14': { city: 'Cork', county: 'County Cork' },
+    'P17': { city: 'Carrigaline', county: 'County Cork' },
+    'P24': { city: 'Youghal', county: 'County Cork' },
+    'P25': { city: 'Midleton', county: 'County Cork' },
+    'P31': { city: 'Cork', county: 'County Cork' },
+    'P32': { city: 'Mallow', county: 'County Cork' },
+    'P36': { city: 'Fermoy', county: 'County Cork' },
+    'P43': { city: 'Mitchelstown', county: 'County Cork' },
+    'P47': { city: 'Macroom', county: 'County Cork' },
+    'P51': { city: 'Cork', county: 'County Cork' },
+    'P56': { city: 'Cobh', county: 'County Cork' },
+    'P61': { city: 'Bantry', county: 'County Cork' },
+    'P67': { city: 'Bandon', county: 'County Cork' },
+    'P72': { city: 'Skibbereen', county: 'County Cork' },
+    'P75': { city: 'Clonakilty', county: 'County Cork' },
+    'P81': { city: 'Dunmanway', county: 'County Cork' },
+    'P85': { city: 'Kinsale', county: 'County Cork' },
+    'R14': { city: 'Gorey', county: 'County Wexford' },
+    'R21': { city: 'New Ross', county: 'County Wexford' },
+    'R32': { city: 'Kilkenny', county: 'County Kilkenny' },
+    'R35': { city: 'Thomastown', county: 'County Kilkenny' },
+    'R42': { city: 'Tipperary', county: 'County Tipperary' },
+    'R45': { city: 'Cashel', county: 'County Tipperary' },
+    'R56': { city: 'Thurles', county: 'County Tipperary' },
+    'R93': { city: 'Carlow', county: 'County Carlow' },
+    'R95': { city: 'Kilkenny', county: 'County Kilkenny' },
+    'T12': { city: 'Cork', county: 'County Cork' },
+    'T23': { city: 'Cork', county: 'County Cork' },
+    'T34': { city: 'Dungarvan', county: 'County Waterford' },
+    'T45': { city: 'Clonmel', county: 'County Tipperary' },
+    'T56': { city: 'Nenagh', county: 'County Tipperary' },
+    'V14': { city: 'Listowel', county: 'County Kerry' },
+    'V15': { city: 'Tralee', county: 'County Kerry' },
+    'V23': { city: 'Cahersiveen', county: 'County Kerry' },
+    'V31': { city: 'Castlemaine', county: 'County Kerry' },
+    'V35': { city: 'Killorglin', county: 'County Kerry' },
+    'V42': { city: 'Newcastle West', county: 'County Limerick' },
+    'V63': { city: 'Dingle', county: 'County Kerry' },
+    'V92': { city: 'Killarney', county: 'County Kerry' },
+    'V93': { city: 'Kenmare', county: 'County Kerry' },
+    'V94': { city: 'Limerick', county: 'County Limerick' },
+    'V95': { city: 'Limerick', county: 'County Limerick' },
+    'W12': { city: 'Wicklow', county: 'County Wicklow' },
+    'W23': { city: 'Greystones', county: 'County Wicklow' },
+    'W34': { city: 'Dunlavin', county: 'County Wicklow' },
+    'W91': { city: 'Waterford', county: 'County Waterford' },
+    'X35': { city: 'Roscrea', county: 'County Tipperary' },
+    'X42': { city: 'Waterford', county: 'County Waterford' },
+    'X91': { city: 'Waterford', county: 'County Waterford' },
+    'Y14': { city: 'Drogheda', county: 'County Louth' },
+    'Y21': { city: 'Navan', county: 'County Meath' },
+    'Y25': { city: 'Trim', county: 'County Meath' },
+    'Y34': { city: 'Dundalk', county: 'County Louth' },
+    'Y35': { city: 'Wexford', county: 'County Wexford' },
+};
 
 export function Clientes() {
     const [clients, setClients] = useState([]);
@@ -78,6 +219,7 @@ export function Clientes() {
             email: client.email || '',
             instagram: client.instagram || ''
         });
+        setHasSearched(true);
         setIsModalOpen(true);
     };
 
@@ -119,60 +261,65 @@ export function Clientes() {
         if (type === 'main') setIsSearchingEircode(true);
         else setIsSearchingDeliveryEircode(true);
 
+        // Step 1: Get city/county from routing key (first 3 chars) — instant and reliable
+        const routingKey = eircode.substring(0, 3).toUpperCase();
+        const localData = EIRCODE_ROUTING_KEYS[routingKey];
+
+        const baseData = {
+            street: '',
+            house_number: '',
+            city: localData?.city || '',
+            county: localData?.county || '',
+            area: ''
+        };
+
         try {
-            // Searching with countrycodes limit for better precision in Ireland
+            // Step 2: Try Nominatim for street-level detail (may or may not work)
             const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${eircode}&countrycodes=ie&format=json&addressdetails=1`);
             const data = await res.json();
 
-            if (type === 'main') setHasSearched(true);
-
             if (data && data.length > 0) {
-                const result = data[0];
-                const addr = result.address;
-
-                // Improved Mapping logic for Irish structure
-                const mappedData = {
-                    street: addr.road || addr.pedestrian || addr.cycleway || addr.path || '',
-                    house_number: addr.house_number || '',
-                    city: addr.city || addr.town || addr.village || addr.municipality || addr.city_district || '',
-                    county: addr.county || addr.state || '',
-                    area: addr.suburb || addr.neighbourhood || addr.quarter || addr.hamlet || ''
-                };
-
-                // Fallback for City if the above are missing
-                if (!mappedData.city && addr.county) {
-                    mappedData.city = addr.county.replace('County ', '');
+                const addr = data[0].address;
+                // Merge Nominatim data on top of local data
+                baseData.street = addr.road || addr.pedestrian || addr.cycleway || addr.path || '';
+                baseData.house_number = addr.house_number || '';
+                baseData.area = addr.suburb || addr.neighbourhood || addr.quarter || addr.hamlet || '';
+                // Nominatim city/county overrides local if available
+                if (addr.city || addr.town || addr.village) {
+                    baseData.city = addr.city || addr.town || addr.village || baseData.city;
                 }
-
-                if (type === 'main') {
-                    setFormData(prev => ({
-                        ...prev,
-                        street: mappedData.street || prev.street,
-                        house_number: mappedData.house_number || prev.house_number,
-                        city: mappedData.city || prev.city,
-                        county: mappedData.county || prev.county,
-                        area: mappedData.area || prev.area
-                    }));
-                } else {
-                    setFormData(prev => ({
-                        ...prev,
-                        delivery_street: mappedData.street || prev.delivery_street,
-                        delivery_house_number: mappedData.house_number || prev.delivery_house_number,
-                        delivery_city: mappedData.city || prev.delivery_city,
-                        delivery_county: mappedData.county || prev.delivery_county,
-                        delivery_area: mappedData.area || prev.delivery_area
-                    }));
+                if (addr.county) {
+                    baseData.county = addr.county || baseData.county;
                 }
-            } else {
-                console.warn(`Eircode ${eircode} not found in Nominatim.`);
             }
         } catch (err) {
             console.error("Nominatim error:", err);
-            if (type === 'main') setHasSearched(true);
-        } finally {
-            if (type === 'main') setIsSearchingEircode(false);
-            else setIsSearchingDeliveryEircode(false);
         }
+
+        // Apply data to form
+        if (type === 'main') {
+            setHasSearched(true);
+            setFormData(prev => ({
+                ...prev,
+                street: baseData.street || prev.street,
+                house_number: baseData.house_number || prev.house_number,
+                city: baseData.city || prev.city,
+                county: baseData.county || prev.county,
+                area: baseData.area || prev.area
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                delivery_street: baseData.street || prev.delivery_street,
+                delivery_house_number: baseData.house_number || prev.delivery_house_number,
+                delivery_city: baseData.city || prev.delivery_city,
+                delivery_county: baseData.county || prev.delivery_county,
+                delivery_area: baseData.area || prev.delivery_area
+            }));
+        }
+
+        if (type === 'main') setIsSearchingEircode(false);
+        else setIsSearchingDeliveryEircode(false);
     };
 
     const handleSubmit = async (e) => {
@@ -345,14 +492,12 @@ export function Clientes() {
                                             label="Street / Road / Avenue"
                                             value={formData.street}
                                             onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
-                                            required
                                         />
                                         <div className="grid grid-cols-2 gap-3">
                                             <Input
                                                 label="House Number / Name"
                                                 value={formData.house_number}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, house_number: e.target.value }))}
-                                                required
                                             />
                                             <Input
                                                 label="Apartment / Unit / Floor"
@@ -361,7 +506,7 @@ export function Clientes() {
                                             />
                                         </div>
                                         <Input
-                                            label="Area / District (Optional)"
+                                            label="Area / District"
                                             value={formData.area}
                                             onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
                                         />
