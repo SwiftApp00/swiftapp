@@ -6,6 +6,7 @@ import {
     Users,
     FileText,
     Banknote,
+    ClipboardList,
     LogOut,
     Menu,
     X
@@ -15,6 +16,7 @@ const navItems = [
     { name: 'Dashboard', path: '/crm/dashboard', icon: LayoutDashboard },
     { name: 'Leads', path: '/crm/leads', icon: Users },
     { name: 'Clients', path: '/crm/clientes', icon: Users },
+    { name: 'Service Requests', path: '/crm/service-requests', icon: ClipboardList },
     { name: 'Quotes', path: '/crm/orcamentos', icon: FileText },
     { name: 'Finance', path: '/crm/financeiro', icon: Banknote },
 ];

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// Public Public
+// Public Pages
 import { Landing } from '../pages/Landing';
 import { Login } from '../pages/Login';
+import { ServiceRequestForm } from '../pages/public/ServiceRequestForm';
 
 // Layout Wrappers
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
@@ -13,6 +14,7 @@ import { CRMLayout } from '../components/layout/CRMLayout';
 import { Dashboard } from '../pages/crm/Dashboard';
 import { Leads } from '../pages/crm/Leads';
 import { Clientes } from '../pages/crm/Clientes';
+import { ServiceRequests } from '../pages/crm/ServiceRequests';
 import { Orcamentos } from '../pages/crm/Orcamentos';
 import { Financeiro } from '../pages/crm/Financeiro';
 
@@ -22,6 +24,7 @@ export default function AppRoutes() {
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/request" element={<ServiceRequestForm />} />
 
             {/* Protected CRM Routes */}
             <Route path="/crm" element={<ProtectedRoute />}>
@@ -29,6 +32,7 @@ export default function AppRoutes() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="leads" element={<Leads />} />
                     <Route path="clientes" element={<Clientes />} />
+                    <Route path="service-requests" element={<ServiceRequests />} />
                     <Route path="orcamentos" element={<Orcamentos />} />
                     <Route path="financeiro" element={<Financeiro />} />
                     <Route path="" element={<Navigate to="/crm/dashboard" replace />} />
