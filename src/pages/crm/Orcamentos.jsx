@@ -4,6 +4,8 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { generateQuotePDF } from '../../services/pdfService';
+import { Download, Mail } from 'lucide-react';
 
 export function Orcamentos() {
     const [quotes, setQuotes] = useState([]);
@@ -21,7 +23,7 @@ export function Orcamentos() {
         setLoading(true);
         const { data } = await supabase
             .from('quotes')
-            .select('*, clients(name)')
+            .select('*, clients(*)')
             .order('created_at', { ascending: false });
         if (data) setQuotes(data);
         setLoading(false);
@@ -39,7 +41,25 @@ export function Orcamentos() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('quotes').insert([form]);
+
+        // Use the DB function for numbering
+        const { data: qNumData } = await supabase.rpc('generate_quote_number');
+        const qNumber = qNumData || `QT-${new Date().getFullYear()}-MANUAL`;
+
+        const subtotal = Number(form.price);
+        const vat = subtotal * 0.23;
+        const total = subtotal + vat;
+
+        const payload = {
+            ...form,
+            quote_number: qNumber,
+            items: [{ description: form.description, quantity: 1, unit_price: subtotal, total: subtotal }],
+            subtotal,
+            vat_amount: vat,
+            total
+        };
+
+        const { error } = await supabase.from('quotes').insert([payload]);
         if (!error) {
             setIsModalOpen(false);
             setForm({ client_id: '', description: '', price: '', service_date: '' });
@@ -48,16 +68,17 @@ export function Orcamentos() {
     };
 
     const columns = [
+        { header: 'Number', accessor: 'quote_number', render: (row) => <span className="font-mono text-xs font-bold">{row.quote_number}</span> },
         { header: 'Client', accessor: 'client_id', render: (row) => row.clients?.name || 'Unknown' },
         { header: 'Service', accessor: 'description' },
-        { header: 'Price', accessor: 'price', render: (row) => `€${row.price}` },
+        { header: 'Total (€)', accessor: 'total', render: (row) => <span className="font-bold text-gray-900">€{Number(row.total || row.price || 0).toFixed(2)}</span> },
         { header: 'Date', accessor: 'service_date', render: (row) => new Date(row.service_date).toLocaleDateString() },
         {
             header: 'Status', accessor: 'status', render: (row) => (
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'approved' ? 'bg-green-100 text-green-700' :
-                        row.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                            row.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'
+                    row.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        row.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
                     }`}>
                     {row.status.toUpperCase()}
                 </span>
@@ -91,6 +112,22 @@ export function Orcamentos() {
                                     <Button size="sm" variant="danger" onClick={() => handleStatusChange(row.id, 'rejected')}>Reject</Button>
                                 </>
                             )}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                title="Download PDF"
+                                onClick={() => generateQuotePDF(row, row.clients)}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                title="Send Email"
+                                onClick={() => alert('Email sending to be implemented in Phase 4.2')}
+                            >
+                                <Mail className="h-4 w-4" />
+                            </Button>
                         </div>
                     )}
                 />

@@ -84,35 +84,53 @@ export function ServiceRequests() {
 
             if (clientError) throw clientError;
 
-            // 2. Create quote
-            const serviceDesc = [
-                getServiceLabel(sr.service_type),
-                sr.service_type_other ? `(${sr.service_type_other})` : '',
-                sr.includes_furniture ? '• Includes furniture' : '• Bags & boxes only',
-                sr.needs_assembly ? `• Assembly/Disassembly: ${sr.assembly_type} — ${sr.assembly_items}` : '',
-                `• Pickup: ${sr.pickup_street || ''} ${sr.pickup_house_number || ''}, ${sr.pickup_city || ''} ${sr.pickup_eircode || ''}`,
-                `• Delivery: ${sr.delivery_street || ''} ${sr.delivery_house_number || ''}, ${sr.delivery_city || ''} ${sr.delivery_eircode || ''}`,
-                sr.distance_km ? `• Distance: ${sr.distance_km} km` : '',
-            ].filter(Boolean).join('\n');
+            // 2. Prepare items for the quote
+            const quoteItems = [
+                {
+                    description: `${getServiceLabel(sr.service_type)}${sr.service_type_other ? `: ${sr.service_type_other}` : ''}`,
+                    quantity: 1,
+                    unit_price: 0, // Manual entry needed in CRM later, but defaulting
+                    total: 0
+                }
+            ];
 
+            if (sr.needs_assembly) {
+                quoteItems.push({
+                    description: `Assembly/Disassembly: ${sr.assembly_items}`,
+                    quantity: 1,
+                    unit_price: 0,
+                    total: 0
+                });
+            }
+
+            // 3. Get next quote number
+            const { data: qNumData } = await supabase.rpc('generate_quote_number');
+            const qNumber = qNumData || `QT-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+            // 4. Create quote
             const { error: quoteError } = await supabase
                 .from('quotes')
                 .insert([{
                     client_id: clientData.id,
-                    description: serviceDesc,
+                    quote_number: qNumber,
+                    description: getServiceLabel(sr.service_type),
+                    items: quoteItems,
                     status: 'pending',
                     service_date: sr.preferred_date,
+                    subtotal: 0,
+                    vat_amount: 0,
+                    total: 0
                 }]);
 
             if (quoteError) throw quoteError;
 
-            // 3. Update service request status
+            // 5. Update service request status
             await supabase
                 .from('service_requests')
                 .update({ status: 'quoted' })
                 .eq('id', sr.id);
 
-            alert('Quote generated successfully! Check the Quotes section.');
+            alert(`Quote ${qNumber} generated successfully! Check the Quotes section to set the price.`);
             setIsModalOpen(false);
             fetchRequests();
         } catch (err) {
