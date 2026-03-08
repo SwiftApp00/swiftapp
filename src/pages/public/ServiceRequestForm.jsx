@@ -146,6 +146,18 @@ export function ServiceRequestForm() {
                 lead_id: leadId || null,
             }]);
             if (error) throw error;
+
+            // Trigger Email Notifications (Secondary, don't block on error)
+            supabase.functions.invoke('send-service-request-emails', {
+                body: {
+                    client_name: form.client_name,
+                    client_email: form.client_email,
+                    service_type: form.service_type === 'other' ? form.service_type_other : form.service_type,
+                    pickup_city: form.pickup_city,
+                    delivery_city: form.delivery_city,
+                }
+            }).catch(e => console.error('Email trigger failed:', e));
+
             setSubmitted(true);
         } catch (err) {
             console.error(err);
