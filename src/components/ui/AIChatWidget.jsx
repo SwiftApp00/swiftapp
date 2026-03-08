@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, User, Bot, Loader2, ExternalLink } from 'lucide-react';
+import { MessageCircle, X, Send, User, Bot, Loader2, ExternalLink, ClipboardList } from 'lucide-react';
 import { chatService } from '../../services/geminiService';
 import { Button } from './Button';
 
@@ -11,6 +11,7 @@ export function AIChatWidget() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
+    const [showFormButton, setShowFormButton] = useState(false);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -60,10 +61,16 @@ export function AIChatWidget() {
             setShowWhatsAppButton(true);
         }
 
-        // 3. Sanitize Response (Remove tags)
+        // 3. Check for Form Trigger: [SHOW_FORM]
+        if (aiResponse.includes('[SHOW_FORM]')) {
+            setShowFormButton(true);
+        }
+
+        // 4. Sanitize Response (Remove tags)
         const cleanedResponse = aiResponse
             .replace(/\[SAVE_LEAD:\s*({.*?})\]/g, '')
             .replace(/\[SHOW_WHATSAPP\]/g, '')
+            .replace(/\[SHOW_FORM\]/g, '')
             .trim();
 
         setIsLoading(false);
@@ -129,6 +136,17 @@ export function AIChatWidget() {
 
                     {/* Footer / Input */}
                     <div className="p-4 bg-white border-t border-gray-100">
+                        {showFormButton && (
+                            <a
+                                href="/request"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mb-3 flex items-center justify-center gap-2 w-full py-2.5 bg-[#8B0000] hover:bg-red-900 text-white rounded-xl text-sm font-bold transition-all transform hover:scale-[1.02] shadow-md animate-in fade-in zoom-in duration-300"
+                            >
+                                <ClipboardList size={16} />
+                                📋 Fill Out Service Request Form
+                            </a>
+                        )}
                         {showWhatsAppButton && (
                             <a
                                 href={generateWhatsAppLink()}

@@ -26,7 +26,14 @@ CRITICAL RULES:
 - Once (and only once) you have ALL 5 pieces of information, append a hidden lead tag at the very end of your message in exactly this format:
 [SAVE_LEAD: {"name": "...", "items_to_move": "...", "pickup_address": "...", "delivery_address": "...", "preferred_date": "YYYY-MM-DD"}]
 - Also append "[SHOW_WHATSAPP]" after the lead tag to let them finalize.
+
+FORM TRIGGER:
+- After greeting and getting the user's name, OR whenever the user asks for a "quote", "detailed quote", "estimate", or describes a complex move (house removal, furniture, multiple items), you SHOULD suggest our online form for a more accurate quote.
+- When offering the form, append "[SHOW_FORM]" at the end of your message.
+- Example: "To give you the most accurate quote, I recommend filling out our quick online form with all the details! [SHOW_FORM]"
+- You can still continue the conversation after suggesting the form.
 `;
+
 
 export const chatService = {
     async saveLead(leadData) {
