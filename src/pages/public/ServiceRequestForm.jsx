@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
+import { getDistanceBetweenEircodes } from '../../services/distanceService';
 import translations from '../../i18n/formTranslations';
 import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar } from 'lucide-react';
 
@@ -78,6 +79,23 @@ export function ServiceRequestForm() {
 
     const changeLang = (l) => { setLang(l); localStorage.setItem('sr_lang', l); };
     const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+    // Distance Calculation Logic
+    useEffect(() => {
+        const calculateDistance = async () => {
+            const e1 = form.pickup_eircode?.replace(/\s/g, '');
+            const e2 = form.delivery_eircode?.replace(/\s/g, '');
+
+            if (e1?.length === 7 && e2?.length === 7) {
+                const dist = await getDistanceBetweenEircodes(e1, e2);
+                if (dist) {
+                    setForm(prev => ({ ...prev, distance_km: dist }));
+                }
+            }
+        };
+        const timer = setTimeout(calculateDistance, 1000); // Debounce
+        return () => clearTimeout(timer);
+    }, [form.pickup_eircode, form.delivery_eircode]);
 
     // Eircode logic
     const handleEircode = async (val, prefix) => {
@@ -328,6 +346,21 @@ export function ServiceRequestForm() {
                     </h3>
                     <AddressBlock prefix="delivery" />
                     <AccessBlock prefix="delivery" />
+
+                    {/* Distance Indicator */}
+                    {form.distance_km && (
+                        <div className="pt-2 animate-in fade-in zoom-in duration-500">
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-blue-700">
+                                    <Truck size={16} className="animate-pulse" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">{t.estimatedDistance}</span>
+                                </div>
+                                <span className="text-lg font-black text-blue-800">
+                                    {form.distance_km} <span className="text-xs font-normal opacity-70">{t.km}</span>
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Section 4: Type of Service */}

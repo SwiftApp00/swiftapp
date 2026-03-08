@@ -69,6 +69,8 @@ const translations = {
         parkingQuestion: 'Is there parking space available near the building/house?',
         preferredDate: 'Preferred date',
         preferredTime: 'Preferred time',
+        estimatedDistance: 'Estimated Distance',
+        km: 'km',
 
         // Actions
         submit: 'Submit Service Request',
@@ -146,6 +148,8 @@ const translations = {
         parkingQuestion: 'Há espaço para estacionar perto do prédio/casa?',
         preferredDate: 'Data preferida',
         preferredTime: 'Horário preferido',
+        estimatedDistance: 'Distância Estimada',
+        km: 'km',
 
         // Actions
         submit: 'Enviar Solicitação',
