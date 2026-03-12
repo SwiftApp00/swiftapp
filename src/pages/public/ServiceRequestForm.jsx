@@ -237,10 +237,16 @@ export function ServiceRequestForm() {
             const params = new URLSearchParams(window.location.search);
             const leadId = params.get('lead_id');
 
-            const { error } = await supabase.from('service_requests').insert([{
-                ...form,
+            // Map furniture_items to DB columns
+            const { furniture_items, ...formData } = form;
+            const payload = {
+                ...formData,
+                items: furniture_items.length > 0 ? furniture_items : null,
+                assembly_items: furniture_items.filter(i => i.description.trim()).map(i => `${i.description} (x${i.quantity})`).join(', ') || null,
                 lead_id: leadId || null,
-            }]);
+            };
+
+            const { error } = await supabase.from('service_requests').insert([payload]);
             if (error) throw error;
 
             // Trigger Email Notifications (Secondary, don't block on error)
@@ -428,7 +434,11 @@ export function ServiceRequestForm() {
                         {/* Dynamic furniture items list */}
                         {form.includes_furniture === true && (
                             <div className="space-y-3 animate-in fade-in duration-300 pt-3 border-t border-gray-100">
-                                <label className="block text-xs font-semibold text-gray-500">{t.itemDescription}</label>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex-1 block text-xs font-semibold text-gray-500">{t.itemDescription}</label>
+                                    <span className="w-16 text-center text-[10px] font-semibold text-gray-400">{t.itemQuantity}</span>
+                                    <span className="w-8"></span>
+                                </div>
                                 {form.furniture_items.map((item, index) => (
                                     <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
                                         <input
@@ -441,19 +451,16 @@ export function ServiceRequestForm() {
                                                 set('furniture_items', updated);
                                             }}
                                         />
-                                        <div className="flex flex-col items-center">
-                                            {index === 0 && <span className="text-[10px] font-semibold text-gray-400 mb-0.5">{t.itemQuantity}</span>}
-                                            <input
-                                                type="number" min="1"
-                                                className="w-16 px-2 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm text-center"
-                                                value={item.quantity}
-                                                onChange={(e) => {
-                                                    const updated = [...form.furniture_items];
-                                                    updated[index] = { ...updated[index], quantity: Math.max(1, parseInt(e.target.value) || 1) };
-                                                    set('furniture_items', updated);
-                                                }}
-                                            />
-                                        </div>
+                                        <input
+                                            type="number" min="1"
+                                            className="w-16 px-2 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm text-center"
+                                            value={item.quantity}
+                                            onChange={(e) => {
+                                                const updated = [...form.furniture_items];
+                                                updated[index] = { ...updated[index], quantity: Math.max(1, parseInt(e.target.value) || 1) };
+                                                set('furniture_items', updated);
+                                            }}
+                                        />
                                         <button type="button"
                                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                             onClick={() => {
@@ -507,6 +514,7 @@ export function ServiceRequestForm() {
                                             </p>
                                             <div className="flex gap-2">
                                                 {[
+                                                    { key: 'none', label: t.none },
                                                     { key: 'assembly_only', label: t.assemblyOnly },
                                                     { key: 'disassembly_only', label: t.disassemblyOnly },
                                                     { key: 'both', label: t.both },
