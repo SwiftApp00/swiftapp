@@ -51,6 +51,11 @@ const translations = {
         furnitureExamples: 'Bed, Mattress, Table, Chairs, Sofa, Fridge, Washing Machine, Bicycle',
         noBags: 'No, just bags & boxes',
         bagsExamples: 'Suitcases, Bags, Boxes',
+        itemDescription: 'Item description',
+        itemDescriptionPlaceholder: 'e.g. Double bed, Wardrobe...',
+        itemQuantity: 'Qty',
+        addItem: '+ Add item',
+        removeItem: 'Remove',
 
         // Section 6 — Assembly
         sectionAssembly: 'Assembly & Disassembly',
@@ -63,6 +68,9 @@ const translations = {
         assemblyOnly: 'Assembly only',
         disassemblyOnly: 'Disassembly only',
         both: 'Both',
+        assemblyPerItemLabel: 'Select assembly type for each item:',
+        assembly: 'Assembly',
+        disassembly: 'Disassembly',
 
         // Section 7 — Additional
         sectionAdditional: 'Additional Information',
@@ -130,6 +138,11 @@ const translations = {
         furnitureExamples: 'Cama, Colchão, Mesa, Cadeiras, Sofá, Geladeira, Máquina de Lavar, Bicicleta',
         noBags: 'Não, apenas malas e caixas',
         bagsExamples: 'Malas, Sacolas, Caixas',
+        itemDescription: 'Descrição do item',
+        itemDescriptionPlaceholder: 'Ex: Cama de casal, Guarda-roupa...',
+        itemQuantity: 'Qtd',
+        addItem: '+ Adicionar item',
+        removeItem: 'Remover',
 
         // Section 6 — Assembly
         sectionAssembly: 'Montagem e Desmontagem',
@@ -142,6 +155,9 @@ const translations = {
         assemblyOnly: 'Apenas montagem',
         disassemblyOnly: 'Apenas desmontagem',
         both: 'Ambos',
+        assemblyPerItemLabel: 'Selecione o tipo de montagem para cada item:',
+        assembly: 'Montagem',
+        disassembly: 'Desmontagem',
 
         // Section 7 — Additional
         sectionAdditional: 'Informações Adicionais',

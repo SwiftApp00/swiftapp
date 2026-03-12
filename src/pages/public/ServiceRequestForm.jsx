@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { getDistanceBetweenEircodes } from '../../services/distanceService';
 import translations from '../../i18n/formTranslations';
-import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar } from 'lucide-react';
+import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar, Plus, X } from 'lucide-react';
 
 // Reusable Address Block (Defined outside to prevent re-mounting on every keystroke)
 const AddressBlock = ({ prefix, disabled = false, form, t, searchingEircode, handleEircode, set }) => (
@@ -140,7 +140,8 @@ const initialForm = {
     delivery_access: 'elevator', delivery_floor: '',
     service_type: '', service_type_other: '',
     includes_furniture: null,
-    needs_assembly: null, assembly_items: '', assembly_type: '',
+    furniture_items: [],
+    needs_assembly: null, assembly_type: '',
     has_parking: null,
     preferred_date: '', preferred_time: '',
 };
@@ -404,7 +405,12 @@ export function ServiceRequestForm() {
                             <button type="button"
                                 className={`p-4 rounded-xl border-2 text-left transition-all ${form.includes_furniture === true
                                     ? 'border-[#8B0000] bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                onClick={() => set('includes_furniture', true)}>
+                                onClick={() => {
+                                    set('includes_furniture', true);
+                                    if (form.furniture_items.length === 0) {
+                                        setForm(prev => ({ ...prev, includes_furniture: true, furniture_items: [{ description: '', quantity: 1, assembly_type: '' }] }));
+                                    }
+                                }}>
                                 <span className="text-2xl">🛋️</span>
                                 <p className="text-sm font-semibold mt-2 text-gray-800">{t.yesFurniture}</p>
                                 <p className="text-xs text-gray-400 mt-1">{t.furnitureExamples}</p>
@@ -412,12 +418,61 @@ export function ServiceRequestForm() {
                             <button type="button"
                                 className={`p-4 rounded-xl border-2 text-left transition-all ${form.includes_furniture === false
                                     ? 'border-[#8B0000] bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                onClick={() => set('includes_furniture', false)}>
+                                onClick={() => setForm(prev => ({ ...prev, includes_furniture: false, furniture_items: [], needs_assembly: null }))}>
                                 <span className="text-2xl">🧳</span>
                                 <p className="text-sm font-semibold mt-2 text-gray-800">{t.noBags}</p>
                                 <p className="text-xs text-gray-400 mt-1">{t.bagsExamples}</p>
                             </button>
                         </div>
+
+                        {/* Dynamic furniture items list */}
+                        {form.includes_furniture === true && (
+                            <div className="space-y-3 animate-in fade-in duration-300 pt-3 border-t border-gray-100">
+                                <label className="block text-xs font-semibold text-gray-500">{t.itemDescription}</label>
+                                {form.furniture_items.map((item, index) => (
+                                    <div key={index} className="flex items-center gap-2 animate-in fade-in duration-200">
+                                        <input
+                                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                                            placeholder={t.itemDescriptionPlaceholder}
+                                            value={item.description}
+                                            onChange={(e) => {
+                                                const updated = [...form.furniture_items];
+                                                updated[index] = { ...updated[index], description: e.target.value };
+                                                set('furniture_items', updated);
+                                            }}
+                                        />
+                                        <div className="flex flex-col items-center">
+                                            {index === 0 && <span className="text-[10px] font-semibold text-gray-400 mb-0.5">{t.itemQuantity}</span>}
+                                            <input
+                                                type="number" min="1"
+                                                className="w-16 px-2 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm text-center"
+                                                value={item.quantity}
+                                                onChange={(e) => {
+                                                    const updated = [...form.furniture_items];
+                                                    updated[index] = { ...updated[index], quantity: Math.max(1, parseInt(e.target.value) || 1) };
+                                                    set('furniture_items', updated);
+                                                }}
+                                            />
+                                        </div>
+                                        <button type="button"
+                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                            onClick={() => {
+                                                const updated = form.furniture_items.filter((_, i) => i !== index);
+                                                set('furniture_items', updated.length > 0 ? updated : [{ description: '', quantity: 1, assembly_type: '' }]);
+                                            }}
+                                            title={t.removeItem}>
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button type="button"
+                                    className="flex items-center gap-1.5 text-sm font-semibold text-[#8B0000] hover:text-red-900 transition-colors py-2"
+                                    onClick={() => set('furniture_items', [...form.furniture_items, { description: '', quantity: 1, assembly_type: '' }])}>
+                                    <Plus size={16} />
+                                    {t.addItem}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -440,32 +495,39 @@ export function ServiceRequestForm() {
                                 ❌ {t.no}
                             </button>
                         </div>
-                        {form.needs_assembly === true && (
-                            <div className="space-y-3 animate-in fade-in duration-300">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t.assemblyItemsLabel}</label>
-                                    <textarea className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-200 outline-none text-sm resize-none"
-                                        rows={3} placeholder={t.assemblyItemsPlaceholder}
-                                        value={form.assembly_items} onChange={(e) => set('assembly_items', e.target.value)} />
-                                </div>
-                                {form.assembly_items && (
-                                    <div className="animate-in fade-in duration-300">
-                                        <label className="block text-xs font-semibold text-gray-500 mb-2">{t.assemblyTypeQuestion}</label>
-                                        <div className="flex gap-2">
-                                            {[
-                                                { key: 'assembly_only', label: t.assemblyOnly },
-                                                { key: 'disassembly_only', label: t.disassemblyOnly },
-                                                { key: 'both', label: t.both },
-                                            ].map((opt) => (
-                                                <button key={opt.key} type="button"
-                                                    className={`flex-1 py-2.5 rounded-xl border-2 text-xs font-semibold transition-all ${form.assembly_type === opt.key
-                                                        ? 'border-purple-400 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500'}`}
-                                                    onClick={() => set('assembly_type', opt.key)}>
-                                                    {opt.label}
-                                                </button>
-                                            ))}
+                        {form.needs_assembly === true && form.furniture_items.length > 0 && (
+                            <div className="space-y-3 animate-in fade-in duration-300 pt-3 border-t border-purple-100">
+                                <label className="block text-xs font-semibold text-purple-600 mb-2">{t.assemblyPerItemLabel}</label>
+                                {form.furniture_items.filter(item => item.description.trim()).map((item, index) => {
+                                    const realIndex = form.furniture_items.findIndex(fi => fi === item);
+                                    return (
+                                        <div key={realIndex} className="bg-purple-50/50 border border-purple-100 rounded-xl p-3 space-y-2 animate-in fade-in duration-200">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                {item.description} <span className="text-xs text-gray-400 font-normal">({t.itemQuantity}: {item.quantity})</span>
+                                            </p>
+                                            <div className="flex gap-2">
+                                                {[
+                                                    { key: 'assembly_only', label: t.assemblyOnly },
+                                                    { key: 'disassembly_only', label: t.disassemblyOnly },
+                                                    { key: 'both', label: t.both },
+                                                ].map((opt) => (
+                                                    <button key={opt.key} type="button"
+                                                        className={`flex-1 py-2 rounded-lg border-2 text-xs font-semibold transition-all ${item.assembly_type === opt.key
+                                                            ? 'border-purple-400 bg-purple-100 text-purple-700' : 'border-gray-200 text-gray-500 hover:border-purple-200'}`}
+                                                        onClick={() => {
+                                                            const updated = [...form.furniture_items];
+                                                            updated[realIndex] = { ...updated[realIndex], assembly_type: opt.key };
+                                                            set('furniture_items', updated);
+                                                        }}>
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    );
+                                })}
+                                {form.furniture_items.filter(item => item.description.trim()).length === 0 && (
+                                    <p className="text-sm text-gray-400 italic">{t.assemblyItemsPlaceholder}</p>
                                 )}
                             </div>
                         )}
