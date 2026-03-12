@@ -3,7 +3,7 @@ import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package } from 'lucide-react';
+import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent } from 'lucide-react';
 
 export function ServiceRequests() {
     const [requests, setRequests] = useState([]);
@@ -11,6 +11,11 @@ export function ServiceRequests() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Quote generation modal state
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [quoteItems, setQuoteItems] = useState([]);
+    const [discountPercent, setDiscountPercent] = useState(0);
 
     useEffect(() => { fetchRequests(); }, []);
 
@@ -48,62 +53,128 @@ export function ServiceRequests() {
         return labels[type] || type;
     };
 
-    const handleGenerateQuote = async () => {
+    const getAssemblyTypeLabel = (type) => {
+        const labels = {
+            none: '—  None',
+            assembly_only: '🔧 Assembly',
+            disassembly_only: '🔩 Disassembly',
+            both: '🔧🔩 Both',
+        };
+        return labels[type] || type || '—';
+    };
+
+    // Open the quote generation modal with pre-filled items
+    const handleOpenQuoteModal = () => {
+        const sr = selectedRequest;
+        if (!sr) return;
+
+        const items = [];
+
+        // Main service item
+        items.push({
+            description: `${getServiceLabel(sr.service_type)}${sr.service_type_other ? `: ${sr.service_type_other}` : ''}`,
+            quantity: 1,
+            unit_price: 0,
+        });
+
+        // Furniture items from the items jsonb
+        if (sr.items && Array.isArray(sr.items)) {
+            sr.items.forEach((item) => {
+                if (item.description?.trim()) {
+                    const assemblyLabel = item.assembly_type && item.assembly_type !== 'none'
+                        ? ` (${getAssemblyTypeLabel(item.assembly_type)})`
+                        : '';
+                    items.push({
+                        description: `${item.description}${assemblyLabel}`,
+                        quantity: item.quantity || 1,
+                        unit_price: 0,
+                    });
+                }
+            });
+        }
+
+        setQuoteItems(items);
+        setDiscountPercent(0);
+        setIsQuoteModalOpen(true);
+    };
+
+    const updateQuoteItem = (index, field, value) => {
+        const updated = [...quoteItems];
+        updated[index] = { ...updated[index], [field]: value };
+        setQuoteItems(updated);
+    };
+
+    // Calculate totals
+    const calcSubtotal = () => quoteItems.reduce((sum, item) => sum + (Number(item.unit_price) || 0) * (Number(item.quantity) || 1), 0);
+    const calcDiscountAmount = () => calcSubtotal() * (Number(discountPercent) || 0) / 100;
+    const calcVat = () => (calcSubtotal() - calcDiscountAmount()) * 0.23;
+    const calcTotal = () => calcSubtotal() - calcDiscountAmount() + calcVat();
+
+    const handleSaveQuote = async () => {
         if (!selectedRequest) return;
         setIsGenerating(true);
         const sr = selectedRequest;
 
         try {
-            // 1. Upsert client
+            // 1. Upsert client by email
             const clientPayload = {
                 name: sr.client_name,
                 email: sr.client_email,
-                phone: sr.client_phone,
-                whatsapp: sr.client_whatsapp,
-                eircode: sr.residential_eircode,
-                street: sr.residential_street,
-                house_number: sr.residential_house_number,
-                apartment: sr.residential_apartment,
-                area: sr.residential_area,
-                city: sr.residential_city,
-                county: sr.residential_county,
-                delivery_eircode: sr.delivery_eircode,
-                delivery_street: sr.delivery_street,
-                delivery_house_number: sr.delivery_house_number,
-                delivery_apartment: sr.delivery_apartment,
-                delivery_area: sr.delivery_area,
-                delivery_city: sr.delivery_city,
-                delivery_county: sr.delivery_county,
+                phone: sr.client_phone || null,
+                whatsapp: sr.client_whatsapp || null,
+                eircode: sr.residential_eircode || null,
+                street: sr.residential_street || null,
+                house_number: sr.residential_house_number || null,
+                apartment: sr.residential_apartment || null,
+                area: sr.residential_area || null,
+                city: sr.residential_city || null,
+                county: sr.residential_county || null,
+                delivery_eircode: sr.delivery_eircode || null,
+                delivery_street: sr.delivery_street || null,
+                delivery_house_number: sr.delivery_house_number || null,
+                delivery_apartment: sr.delivery_apartment || null,
+                delivery_area: sr.delivery_area || null,
+                delivery_city: sr.delivery_city || null,
+                delivery_county: sr.delivery_county || null,
             };
 
-            const { data: clientData, error: clientError } = await supabase
+            // Try to find existing client by email first
+            let clientId = null;
+            const { data: existingClient } = await supabase
                 .from('clients')
-                .insert([clientPayload])
-                .select()
-                .single();
+                .select('id')
+                .eq('email', sr.client_email)
+                .maybeSingle();
 
-            if (clientError) throw clientError;
-
-            // 2. Prepare items for the quote
-            const quoteItems = [
-                {
-                    description: `${getServiceLabel(sr.service_type)}${sr.service_type_other ? `: ${sr.service_type_other}` : ''}`,
-                    quantity: 1,
-                    unit_price: 0, // Manual entry needed in CRM later, but defaulting
-                    total: 0
-                }
-            ];
-
-            if (sr.needs_assembly) {
-                quoteItems.push({
-                    description: `Assembly/Disassembly: ${sr.assembly_items}`,
-                    quantity: 1,
-                    unit_price: 0,
-                    total: 0
-                });
+            if (existingClient) {
+                clientId = existingClient.id;
+                // Update existing client
+                await supabase.from('clients').update(clientPayload).eq('id', clientId);
+            } else {
+                // Insert new client
+                const { data: newClient, error: clientError } = await supabase
+                    .from('clients')
+                    .insert([clientPayload])
+                    .select()
+                    .single();
+                if (clientError) throw clientError;
+                clientId = newClient.id;
             }
 
-            // 3. Get next quote number
+            // 2. Prepare items
+            const finalItems = quoteItems.map(item => ({
+                description: item.description,
+                quantity: Number(item.quantity) || 1,
+                unit_price: Number(item.unit_price) || 0,
+                total: (Number(item.unit_price) || 0) * (Number(item.quantity) || 1),
+            }));
+
+            const subtotal = calcSubtotal();
+            const discountAmt = calcDiscountAmount();
+            const vat = calcVat();
+            const total = calcTotal();
+
+            // 3. Get quote number
             const { data: qNumData } = await supabase.rpc('generate_quote_number');
             const qNumber = qNumData || `QT-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
@@ -111,15 +182,17 @@ export function ServiceRequests() {
             const { error: quoteError } = await supabase
                 .from('quotes')
                 .insert([{
-                    client_id: clientData.id,
+                    client_id: clientId,
                     quote_number: qNumber,
                     description: getServiceLabel(sr.service_type),
-                    items: quoteItems,
+                    items: finalItems,
                     status: 'pending',
                     service_date: sr.preferred_date,
-                    subtotal: 0,
-                    vat_amount: 0,
-                    total: 0
+                    subtotal,
+                    discount_percent: Number(discountPercent) || 0,
+                    discount_amount: discountAmt,
+                    vat_amount: vat,
+                    total,
                 }]);
 
             if (quoteError) throw quoteError;
@@ -130,12 +203,13 @@ export function ServiceRequests() {
                 .update({ status: 'quoted' })
                 .eq('id', sr.id);
 
-            alert(`Quote ${qNumber} generated successfully! Check the Quotes section to set the price.`);
+            alert(`Quote ${qNumber} generated successfully!`);
+            setIsQuoteModalOpen(false);
             setIsModalOpen(false);
             fetchRequests();
         } catch (err) {
             console.error('Generate quote error:', err);
-            alert('Error generating quote.');
+            alert('Error generating quote: ' + (err.message || 'Unknown error'));
         } finally {
             setIsGenerating(false);
         }
@@ -261,8 +335,30 @@ export function ServiceRequests() {
                             <DetailRow label="Items" value={sr.includes_furniture ? '🛋️ Includes furniture' : '🧳 Bags & boxes only'} />
                         </div>
 
-                        {/* Assembly */}
-                        {sr.needs_assembly && (
+                        {/* Furniture Items with Assembly Type */}
+                        {sr.items && Array.isArray(sr.items) && sr.items.length > 0 && (
+                            <div className="p-3 rounded-xl bg-purple-50/30 border border-purple-100 space-y-1">
+                                <h4 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                    <Wrench size={12} /> Items & Assembly
+                                </h4>
+                                {sr.items.map((item, idx) => (
+                                    item.description?.trim() && (
+                                        <div key={idx} className="flex justify-between py-1.5 border-b border-purple-50">
+                                            <span className="text-sm text-gray-800 font-medium">
+                                                {item.description} <span className="text-xs text-gray-400">(x{item.quantity || 1})</span>
+                                            </span>
+                                            <span className="text-xs text-purple-600 font-semibold">
+                                                {getAssemblyTypeLabel(item.assembly_type)}
+                                            </span>
+                                        </div>
+                                    )
+                                ))}
+                                <DetailRow label="Needs Assembly" value={sr.needs_assembly ? '✅ Yes' : '❌ No'} />
+                            </div>
+                        )}
+
+                        {/* Legacy assembly display (for old records without items jsonb) */}
+                        {(!sr.items || !Array.isArray(sr.items) || sr.items.length === 0) && sr.needs_assembly && (
                             <div className="p-3 rounded-xl bg-purple-50/30 border border-purple-100 space-y-1">
                                 <h4 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                                     <Wrench size={12} /> Assembly & Disassembly
@@ -286,16 +382,113 @@ export function ServiceRequests() {
                         {/* Generate Quote Button */}
                         {sr.status === 'new' && (
                             <Button
-                                onClick={handleGenerateQuote}
+                                onClick={handleOpenQuoteModal}
                                 className="w-full bg-[#8B0000] hover:bg-red-900 flex items-center justify-center gap-2"
-                                disabled={isGenerating}
                             >
-                                {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-                                {isGenerating ? 'Generating...' : 'Generate Quote'}
+                                <FileText size={18} />
+                                Generate Quote
                             </Button>
                         )}
                     </div>
                 )}
+            </Modal>
+
+            {/* Quote Generation Modal */}
+            <Modal
+                isOpen={isQuoteModalOpen}
+                onClose={() => setIsQuoteModalOpen(false)}
+                title="Generate Quote — Set Prices"
+            >
+                <div className="space-y-4">
+                    {/* Items Table */}
+                    <div className="space-y-2">
+                        <div className="grid grid-cols-12 gap-2 text-xs font-bold text-gray-400 uppercase px-1">
+                            <span className="col-span-5">Description</span>
+                            <span className="col-span-2 text-center">Qty</span>
+                            <span className="col-span-2 text-center">Unit €</span>
+                            <span className="col-span-3 text-right">Total €</span>
+                        </div>
+                        {quoteItems.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-gray-50 rounded-lg p-2">
+                                <span className="col-span-5 text-sm text-gray-800 font-medium truncate" title={item.description}>
+                                    {item.description}
+                                </span>
+                                <input
+                                    type="number" min="1"
+                                    className="col-span-2 w-full px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
+                                    value={item.quantity}
+                                    onChange={(e) => updateQuoteItem(idx, 'quantity', e.target.value)}
+                                />
+                                <input
+                                    type="number" min="0" step="0.01"
+                                    className="col-span-2 w-full px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
+                                    value={item.unit_price}
+                                    onChange={(e) => updateQuoteItem(idx, 'unit_price', e.target.value)}
+                                    placeholder="0.00"
+                                />
+                                <span className="col-span-3 text-sm text-gray-800 font-bold text-right">
+                                    €{((Number(item.unit_price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Discount */}
+                    <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                        <Percent size={16} className="text-yellow-600" />
+                        <div className="flex items-center gap-2 flex-1">
+                            <label className="text-xs font-semibold text-yellow-700">Discount</label>
+                            <input
+                                type="number" min="0" max="100" step="0.5"
+                                className="w-20 px-2 py-1.5 border border-yellow-300 rounded-md text-sm text-center focus:ring-2 focus:ring-yellow-200 outline-none"
+                                value={discountPercent}
+                                onChange={(e) => setDiscountPercent(e.target.value)}
+                                placeholder="0"
+                            />
+                            <span className="text-xs text-yellow-600">%</span>
+                        </div>
+                        {Number(discountPercent) > 0 && (
+                            <span className="text-sm font-bold text-yellow-700">
+                                -€{calcDiscountAmount().toFixed(2)}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Totals */}
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Subtotal</span>
+                            <span className="font-medium">€{calcSubtotal().toFixed(2)}</span>
+                        </div>
+                        {Number(discountPercent) > 0 && (
+                            <div className="flex justify-between text-sm text-yellow-700">
+                                <span>Discount ({discountPercent}%)</span>
+                                <span className="font-medium">-€{calcDiscountAmount().toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">VAT (23%)</span>
+                            <span className="font-medium">€{calcVat().toFixed(2)}</span>
+                        </div>
+                        <div className="border-t border-gray-200 pt-2 flex justify-between">
+                            <span className="text-lg font-bold text-gray-900">TOTAL</span>
+                            <span className="text-lg font-bold text-[#8B0000]">€{calcTotal().toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setIsQuoteModalOpen(false)}>Cancel</Button>
+                        <Button
+                            className="flex-1 bg-[#8B0000] hover:bg-red-900"
+                            onClick={handleSaveQuote}
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                            {isGenerating ? 'Saving...' : 'Save Quote'}
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

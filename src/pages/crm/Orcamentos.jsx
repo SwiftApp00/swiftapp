@@ -5,14 +5,28 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { generateQuotePDF } from '../../services/pdfService';
-import { Download, Mail } from 'lucide-react';
+import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, X as XIcon } from 'lucide-react';
 
 export function Orcamentos() {
     const [quotes, setQuotes] = useState([]);
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingQuoteId, setEditingQuoteId] = useState(null);
     const [form, setForm] = useState({ client_id: '', description: '', price: '', service_date: '' });
+    const [quoteItems, setQuoteItems] = useState([{ description: '', quantity: 1, unit_price: 0 }]);
+    const [discountPercent, setDiscountPercent] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Email confirmation dialog
+    const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+    const [savedQuoteData, setSavedQuoteData] = useState(null);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+    // Detail view
+    const [selectedQuote, setSelectedQuote] = useState(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     useEffect(() => {
         fetchQuotes();
@@ -30,7 +44,7 @@ export function Orcamentos() {
     };
 
     const fetchClients = async () => {
-        const { data } = await supabase.from('clients').select('id, name').order('name');
+        const { data } = await supabase.from('clients').select('id, name, email').order('name');
         if (data) setClients(data);
     };
 
@@ -39,31 +53,170 @@ export function Orcamentos() {
         if (!error) fetchQuotes();
     };
 
-    const handleCreate = async (e) => {
+    // Calculations
+    const calcSubtotal = () => quoteItems.reduce((sum, item) => sum + (Number(item.unit_price) || 0) * (Number(item.quantity) || 1), 0);
+    const calcDiscountAmount = () => calcSubtotal() * (Number(discountPercent) || 0) / 100;
+    const calcVat = () => (calcSubtotal() - calcDiscountAmount()) * 0.23;
+    const calcTotal = () => calcSubtotal() - calcDiscountAmount() + calcVat();
+
+    const updateQuoteItem = (index, field, value) => {
+        const updated = [...quoteItems];
+        updated[index] = { ...updated[index], [field]: value };
+        setQuoteItems(updated);
+    };
+
+    const addQuoteItem = () => {
+        setQuoteItems([...quoteItems, { description: '', quantity: 1, unit_price: 0 }]);
+    };
+
+    const removeQuoteItem = (index) => {
+        if (quoteItems.length <= 1) return;
+        setQuoteItems(quoteItems.filter((_, i) => i !== index));
+    };
+
+    const resetForm = () => {
+        setForm({ client_id: '', description: '', price: '', service_date: '' });
+        setQuoteItems([{ description: '', quantity: 1, unit_price: 0 }]);
+        setDiscountPercent(0);
+        setIsEditing(false);
+        setEditingQuoteId(null);
+    };
+
+    const openCreate = () => {
+        resetForm();
+        setIsModalOpen(true);
+    };
+
+    const openEdit = (quote) => {
+        setIsEditing(true);
+        setEditingQuoteId(quote.id);
+        setForm({
+            client_id: quote.client_id || '',
+            description: quote.description || '',
+            price: quote.price || '',
+            service_date: quote.service_date || '',
+        });
+        setQuoteItems(
+            (quote.items && quote.items.length > 0)
+                ? quote.items.map(i => ({ description: i.description || '', quantity: i.quantity || 1, unit_price: i.unit_price || 0 }))
+                : [{ description: quote.description || '', quantity: 1, unit_price: Number(quote.price) || 0 }]
+        );
+        setDiscountPercent(quote.discount_percent || 0);
+        setIsModalOpen(true);
+    };
+
+    const handleRowClick = (row) => {
+        setSelectedQuote(row);
+        setIsDetailOpen(true);
+    };
+
+    const handleSave = async (e) => {
         e.preventDefault();
+        setIsSaving(true);
 
-        // Use the DB function for numbering
-        const { data: qNumData } = await supabase.rpc('generate_quote_number');
-        const qNumber = qNumData || `QT-${new Date().getFullYear()}-MANUAL`;
+        try {
+            const finalItems = quoteItems.map(item => ({
+                description: item.description,
+                quantity: Number(item.quantity) || 1,
+                unit_price: Number(item.unit_price) || 0,
+                total: (Number(item.unit_price) || 0) * (Number(item.quantity) || 1),
+            }));
 
-        const subtotal = Number(form.price);
-        const vat = subtotal * 0.23;
-        const total = subtotal + vat;
+            const subtotal = calcSubtotal();
+            const discountAmt = calcDiscountAmount();
+            const vat = calcVat();
+            const total = calcTotal();
 
-        const payload = {
-            ...form,
-            quote_number: qNumber,
-            items: [{ description: form.description, quantity: 1, unit_price: subtotal, total: subtotal }],
-            subtotal,
-            vat_amount: vat,
-            total
-        };
+            const payload = {
+                client_id: form.client_id,
+                description: form.description || quoteItems[0]?.description || 'Service',
+                items: finalItems,
+                service_date: form.service_date,
+                subtotal,
+                discount_percent: Number(discountPercent) || 0,
+                discount_amount: discountAmt,
+                vat_amount: vat,
+                total,
+            };
 
-        const { error } = await supabase.from('quotes').insert([payload]);
-        if (!error) {
+            let savedQuote = null;
+
+            if (isEditing && editingQuoteId) {
+                const { data, error } = await supabase.from('quotes').update(payload).eq('id', editingQuoteId).select('*, clients(*)').single();
+                if (error) throw error;
+                savedQuote = data;
+            } else {
+                const { data: qNumData } = await supabase.rpc('generate_quote_number');
+                payload.quote_number = qNumData || `QT-${new Date().getFullYear()}-MANUAL`;
+                payload.status = 'pending';
+
+                const { data, error } = await supabase.from('quotes').insert([payload]).select('*, clients(*)').single();
+                if (error) throw error;
+                savedQuote = data;
+            }
+
             setIsModalOpen(false);
-            setForm({ client_id: '', description: '', price: '', service_date: '' });
+            resetForm();
             fetchQuotes();
+
+            // Show email confirmation
+            setSavedQuoteData(savedQuote);
+            setShowEmailConfirm(true);
+        } catch (err) {
+            console.error(err);
+            alert('Error saving quote: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSendEmail = async () => {
+        if (!savedQuoteData) return;
+        setIsSendingEmail(true);
+
+        try {
+            const client = savedQuoteData.clients;
+            if (!client?.email) {
+                alert('Client has no email address.');
+                return;
+            }
+
+            // Generate PDF as base64
+            const pdfBase64 = generateQuotePDF(savedQuoteData, client, { returnBase64: true });
+
+            // Call edge function to send email
+            const { error } = await supabase.functions.invoke('send-service-request-emails', {
+                body: {
+                    type: 'quote',
+                    client_name: client.name,
+                    client_email: client.email,
+                    quote_number: savedQuoteData.quote_number,
+                    total: savedQuoteData.total,
+                    pdf_base64: pdfBase64,
+                }
+            });
+
+            if (error) console.error('Email send error:', error);
+
+            // Log the email send in the quote
+            const now = new Date().toISOString();
+            const emailLogs = [...(savedQuoteData.email_logs || []), {
+                sent_at: now,
+                recipient: client.email,
+                type: 'quote_pdf',
+            }];
+
+            await supabase.from('quotes').update({ email_logs: emailLogs }).eq('id', savedQuoteData.id);
+
+            alert('Email sent successfully!');
+            setShowEmailConfirm(false);
+            setSavedQuoteData(null);
+            fetchQuotes();
+        } catch (err) {
+            console.error('Email error:', err);
+            alert('Error sending email: ' + (err.message || 'Unknown'));
+        } finally {
+            setIsSendingEmail(false);
         }
     };
 
@@ -72,7 +225,7 @@ export function Orcamentos() {
         { header: 'Client', accessor: 'client_id', render: (row) => row.clients?.name || 'Unknown' },
         { header: 'Service', accessor: 'description' },
         { header: 'Total (€)', accessor: 'total', render: (row) => <span className="font-bold text-gray-900">€{Number(row.total || row.price || 0).toFixed(2)}</span> },
-        { header: 'Date', accessor: 'service_date', render: (row) => new Date(row.service_date).toLocaleDateString() },
+        { header: 'Date', accessor: 'service_date', render: (row) => row.service_date ? new Date(row.service_date).toLocaleDateString() : '-' },
         {
             header: 'Status', accessor: 'status', render: (row) => (
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'approved' ? 'bg-green-100 text-green-700' :
@@ -80,7 +233,7 @@ export function Orcamentos() {
                         row.status === 'sent' ? 'bg-blue-100 text-blue-700' :
                             'bg-gray-100 text-gray-700'
                     }`}>
-                    {row.status.toUpperCase()}
+                    {row.status?.toUpperCase()}
                 </span>
             )
         },
@@ -91,7 +244,7 @@ export function Orcamentos() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
                 <div className="flex gap-2">
-                    <Button onClick={() => setIsModalOpen(true)}>Create Quote</Button>
+                    <Button onClick={openCreate}>Create Quote</Button>
                     <Button onClick={fetchQuotes} variant="outline">Refresh</Button>
                 </div>
             </div>
@@ -103,8 +256,9 @@ export function Orcamentos() {
                     columns={columns}
                     data={quotes}
                     keyExtractor={(row) => row.id}
+                    onRowClick={handleRowClick}
                     actions={(row) => (
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                             {row.status === 'pending' && <Button size="sm" variant="secondary" onClick={() => handleStatusChange(row.id, 'sent')}>Mark Sent</Button>}
                             {row.status === 'sent' && (
                                 <>
@@ -112,20 +266,13 @@ export function Orcamentos() {
                                     <Button size="sm" variant="danger" onClick={() => handleStatusChange(row.id, 'rejected')}>Reject</Button>
                                 </>
                             )}
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                title="Download PDF"
-                                onClick={() => generateQuotePDF(row, row.clients)}
-                            >
+                            <Button size="sm" variant="outline" title="Edit" onClick={() => openEdit(row)}>
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" title="Download PDF" onClick={() => generateQuotePDF(row, row.clients)}>
                                 <Download className="h-4 w-4" />
                             </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                title="Send Email"
-                                onClick={() => alert('Email sending to be implemented in Phase 4.2')}
-                            >
+                            <Button size="sm" variant="outline" title="Send Email" onClick={() => { setSavedQuoteData(row); setShowEmailConfirm(true); }}>
                                 <Mail className="h-4 w-4" />
                             </Button>
                         </div>
@@ -133,8 +280,9 @@ export function Orcamentos() {
                 />
             )}
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Quote">
-                <form onSubmit={handleCreate} className="space-y-4">
+            {/* Create/Edit Modal */}
+            <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); }} title={isEditing ? 'Edit Quote' : 'Create New Quote'}>
+                <form onSubmit={handleSave} className="space-y-4">
                     <Input
                         label="Client"
                         id="client_id"
@@ -144,23 +292,9 @@ export function Orcamentos() {
                         onChange={(e) => setForm({ ...form, client_id: e.target.value })}
                     >
                         <option value="">Select a client...</option>
-                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.email})</option>)}
                     </Input>
-                    <Input
-                        label="Description"
-                        id="description"
-                        required
-                        value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    />
-                    <Input
-                        label="Price (€)"
-                        id="price"
-                        type="number"
-                        required
-                        value={form.price}
-                        onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    />
+
                     <Input
                         label="Service Date"
                         id="service_date"
@@ -169,11 +303,186 @@ export function Orcamentos() {
                         value={form.service_date}
                         onChange={(e) => setForm({ ...form, service_date: e.target.value })}
                     />
-                    <div className="pt-4 flex justify-end gap-2">
-                        <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                        <Button type="submit">Save Quote</Button>
+
+                    {/* Items with pricing */}
+                    <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase">Items</label>
+                        {quoteItems.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-gray-50 rounded-lg p-2">
+                                <input
+                                    className="col-span-5 px-2 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-red-200 outline-none"
+                                    placeholder="Description"
+                                    value={item.description}
+                                    onChange={(e) => updateQuoteItem(idx, 'description', e.target.value)}
+                                    required
+                                />
+                                <input
+                                    type="number" min="1"
+                                    className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
+                                    value={item.quantity}
+                                    onChange={(e) => updateQuoteItem(idx, 'quantity', e.target.value)}
+                                />
+                                <input
+                                    type="number" min="0" step="0.01"
+                                    className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
+                                    value={item.unit_price}
+                                    onChange={(e) => updateQuoteItem(idx, 'unit_price', e.target.value)}
+                                    placeholder="€"
+                                />
+                                <span className="col-span-2 text-sm font-bold text-right">
+                                    €{((Number(item.unit_price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}
+                                </span>
+                                <button type="button" className="col-span-1 text-gray-400 hover:text-red-500 text-center" onClick={() => removeQuoteItem(idx)}>
+                                    <XIcon size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        <button type="button" className="text-sm font-semibold text-[#8B0000] hover:text-red-900" onClick={addQuoteItem}>+ Add item</button>
+                    </div>
+
+                    {/* Discount */}
+                    <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                        <Percent size={16} className="text-yellow-600" />
+                        <label className="text-xs font-semibold text-yellow-700">Discount</label>
+                        <input
+                            type="number" min="0" max="100" step="0.5"
+                            className="w-20 px-2 py-1.5 border border-yellow-300 rounded-md text-sm text-center focus:ring-2 focus:ring-yellow-200 outline-none"
+                            value={discountPercent}
+                            onChange={(e) => setDiscountPercent(e.target.value)}
+                        />
+                        <span className="text-xs text-yellow-600">%</span>
+                        {Number(discountPercent) > 0 && (
+                            <span className="text-sm font-bold text-yellow-700 ml-auto">-€{calcDiscountAmount().toFixed(2)}</span>
+                        )}
+                    </div>
+
+                    {/* Totals */}
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Subtotal</span>
+                            <span className="font-medium">€{calcSubtotal().toFixed(2)}</span>
+                        </div>
+                        {Number(discountPercent) > 0 && (
+                            <div className="flex justify-between text-sm text-yellow-700">
+                                <span>Discount ({discountPercent}%)</span>
+                                <span className="font-medium">-€{calcDiscountAmount().toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">VAT (23%)</span>
+                            <span className="font-medium">€{calcVat().toFixed(2)}</span>
+                        </div>
+                        <div className="border-t border-gray-200 pt-2 flex justify-between">
+                            <span className="text-lg font-bold">TOTAL</span>
+                            <span className="text-lg font-bold text-[#8B0000]">€{calcTotal().toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end gap-2">
+                        <Button variant="outline" type="button" onClick={() => { setIsModalOpen(false); resetForm(); }}>Cancel</Button>
+                        <Button type="submit" disabled={isSaving}>
+                            {isSaving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                            {isSaving ? 'Saving...' : isEditing ? 'Update Quote' : 'Save Quote'}
+                        </Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Detail View Modal */}
+            <Modal isOpen={isDetailOpen} onClose={() => { setIsDetailOpen(false); setSelectedQuote(null); }} title="Quote Details">
+                {selectedQuote && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="font-mono text-sm font-bold text-gray-600">{selectedQuote.quote_number}</span>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${selectedQuote.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                selectedQuote.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                    selectedQuote.status === 'sent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                {selectedQuote.status?.toUpperCase()}
+                            </span>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                            <p className="text-xs text-gray-400 font-bold uppercase">Client</p>
+                            <p className="text-sm font-medium">{selectedQuote.clients?.name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-500">{selectedQuote.clients?.email}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <p className="text-xs text-gray-400 font-bold uppercase">Items</p>
+                            {(selectedQuote.items || []).map((item, idx) => (
+                                <div key={idx} className="flex justify-between text-sm py-1 border-b border-gray-50">
+                                    <span>{item.description} <span className="text-gray-400">(x{item.quantity})</span></span>
+                                    <span className="font-medium">€{Number(item.total || 0).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                            <div className="flex justify-between text-sm"><span className="text-gray-500">Subtotal</span><span>€{Number(selectedQuote.subtotal || 0).toFixed(2)}</span></div>
+                            {Number(selectedQuote.discount_percent) > 0 && (
+                                <div className="flex justify-between text-sm text-yellow-700">
+                                    <span>Discount ({selectedQuote.discount_percent}%)</span>
+                                    <span>-€{Number(selectedQuote.discount_amount || 0).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-sm"><span className="text-gray-500">VAT (23%)</span><span>€{Number(selectedQuote.vat_amount || 0).toFixed(2)}</span></div>
+                            <div className="border-t pt-2 flex justify-between"><span className="font-bold">TOTAL</span><span className="font-bold text-[#8B0000]">€{Number(selectedQuote.total || 0).toFixed(2)}</span></div>
+                        </div>
+
+                        {/* Email logs */}
+                        {selectedQuote.email_logs && selectedQuote.email_logs.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-xs text-gray-400 font-bold uppercase">Email History</p>
+                                {selectedQuote.email_logs.map((log, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs py-1 border-b border-gray-50">
+                                        <span className="text-gray-600">📧 {log.recipient}</span>
+                                        <span className="text-gray-400">{new Date(log.sent_at).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => { openEdit(selectedQuote); setIsDetailOpen(false); }}>
+                                <Pencil size={14} className="mr-1" /> Edit
+                            </Button>
+                            <Button variant="outline" className="flex-1" onClick={() => generateQuotePDF(selectedQuote, selectedQuote.clients)}>
+                                <Download size={14} className="mr-1" /> PDF
+                            </Button>
+                            <Button className="flex-1 bg-[#8B0000] hover:bg-red-900" onClick={() => { setSavedQuoteData(selectedQuote); setShowEmailConfirm(true); setIsDetailOpen(false); }}>
+                                <Mail size={14} className="mr-1" /> Email
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Email Confirmation Dialog */}
+            <Modal isOpen={showEmailConfirm} onClose={() => { setShowEmailConfirm(false); setSavedQuoteData(null); }} title="Send Quote by Email?">
+                {savedQuoteData && (
+                    <div className="space-y-4 text-center">
+                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                            <Mail size={28} className="text-blue-600" />
+                        </div>
+                        <p className="text-sm text-gray-600">
+                            Send quote <strong>{savedQuoteData.quote_number}</strong> to <strong>{savedQuoteData.clients?.email || 'client'}</strong>?
+                        </p>
+                        <p className="text-xs text-gray-400">A PDF will be generated and sent as attachment.</p>
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => { setShowEmailConfirm(false); setSavedQuoteData(null); }}>
+                                No, Skip
+                            </Button>
+                            <Button
+                                className="flex-1 bg-[#8B0000] hover:bg-red-900"
+                                onClick={handleSendEmail}
+                                disabled={isSendingEmail}
+                            >
+                                {isSendingEmail ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2" />}
+                                {isSendingEmail ? 'Sending...' : 'Yes, Send'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

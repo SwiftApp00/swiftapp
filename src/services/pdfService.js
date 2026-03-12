@@ -5,8 +5,9 @@ import 'jspdf-autotable';
  * Generates a branded Quote PDF for Swift Transport & Solutions
  * @param {Object} quoteData - The quote information
  * @param {Object} clientData - The client information
+ * @param {Object} options - Options for generation (e.g. { returnBase64: boolean })
  */
-export const generateQuotePDF = (quoteData, clientData) => {
+export const generateQuotePDF = (quoteData, clientData, options = {}) => {
     const doc = new jsPDF();
     const BRAND_COLOR = [139, 0, 0]; // Dark Red #8B0000
     const LIGHT_GRAY = [245, 245, 245];
@@ -115,28 +116,41 @@ export const generateQuotePDF = (quoteData, clientData) => {
     });
 
     // 4. Totals
-    const finalY = doc.lastAutoTable.finalY + 10;
+    let finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(10);
     doc.setTextColor(40, 40, 40);
 
     const subtotal = quoteData.subtotal || quoteData.price || 0;
-    const vat = quoteData.vat_amount || (subtotal * 0.23);
-    const total = quoteData.total || (Number(subtotal) + Number(vat));
+    const discountPercent = Number(quoteData.discount_percent || 0);
+    const discountAmount = Number(quoteData.discount_amount || 0);
+    const vat = quoteData.vat_amount || ((subtotal - discountAmount) * 0.23);
+    const total = quoteData.total || (Number(subtotal) - discountAmount + Number(vat));
 
     doc.text(`Subtotal:`, 140, finalY);
     doc.text(`€${Number(subtotal).toFixed(2)}`, 190, finalY, { align: "right" });
+    finalY += 7;
 
-    doc.text(`VAT (23%):`, 140, finalY + 7);
-    doc.text(`€${Number(vat).toFixed(2)}`, 190, finalY + 7, { align: "right" });
+    if (discountPercent > 0) {
+        doc.setTextColor(180, 0, 0); // Red color for discount
+        doc.text(`Discount (${discountPercent}%):`, 140, finalY);
+        doc.text(`-€${discountAmount.toFixed(2)}`, 190, finalY, { align: "right" });
+        doc.setTextColor(40, 40, 40); // Reset color
+        finalY += 7;
+    }
+
+    doc.text(`VAT (23%):`, 140, finalY);
+    doc.text(`€${Number(vat).toFixed(2)}`, 190, finalY, { align: "right" });
+    finalY += 3;
 
     doc.setDrawColor(200, 200, 200);
-    doc.line(130, finalY + 10, 190, finalY + 10);
+    doc.line(130, finalY, 190, finalY);
+    finalY += 8;
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(BRAND_COLOR[0], BRAND_COLOR[1], BRAND_COLOR[2]);
-    doc.text(`TOTAL:`, 140, finalY + 18);
-    doc.text(`€${Number(total).toFixed(2)}`, 190, finalY + 18, { align: "right" });
+    doc.text(`TOTAL:`, 140, finalY);
+    doc.text(`€${Number(total).toFixed(2)}`, 190, finalY, { align: "right" });
 
     // 5. Terms & Signature
     doc.setFontSize(9);
@@ -160,6 +174,12 @@ export const generateQuotePDF = (quoteData, clientData) => {
     doc.setFontSize(11);
     doc.text("Thank you for choosing Swift Transport & Solutions", 105, pageHeight - 5, { align: "center" });
 
-    // Download
-    doc.save(`Quote_${quoteData.quote_number || 'Draft'}.pdf`);
+    // Download or Return
+    if (options.returnBase64) {
+        // Return as base64 string for email attachment
+        return doc.output('datauristring').split(',')[1];
+    } else {
+        // Trigger browser download
+        doc.save(`Quote_${quoteData.quote_number || 'Draft'}.pdf`);
+    }
 };
