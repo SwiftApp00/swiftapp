@@ -5,12 +5,16 @@ import translations from '../../i18n/formTranslations';
 import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar, Plus, X } from 'lucide-react';
 
 // Reusable Address Block (Defined outside to prevent re-mounting on every keystroke)
-const AddressBlock = ({ prefix, disabled = false, form, t, searchingEircode, handleEircode, set }) => (
+const AddressBlock = ({ prefix, disabled = false, form, t, searchingEircode, handleEircode, set, prefilledFromBot }) => {
+    const isMissing = (val) => prefilledFromBot && (!val || String(val).trim() === '');
+    const baseInput = "w-full px-4 py-2.5 border rounded-lg focus:ring-2 outline-none text-sm transition-all";
+    const getInputClass = (val, required) => required && isMissing(val) ? `${baseInput} border-red-500 ring-2 ring-red-200 bg-red-50 focus:border-red-500` : `${baseInput} border-gray-200 focus:ring-red-200 focus:border-red-400`;
+    return (
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="relative">
             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.eircode} *</label>
             <input
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                className={getInputClass(form[`${prefix}_eircode`], true)}
                 placeholder={t.eircodePlaceholder} maxLength={8}
                 value={form[`${prefix}_eircode`]}
                 onChange={(e) => handleEircode(e.target.value, prefix)}
@@ -19,43 +23,47 @@ const AddressBlock = ({ prefix, disabled = false, form, t, searchingEircode, han
         </div>
         <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.street}</label>
-            <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+            <input className={getInputClass(form[`${prefix}_street`], false)}
                 value={form[`${prefix}_street`]} onChange={(e) => set(`${prefix}_street`, e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
             <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">{t.houseNumber}</label>
-                <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                <input className={getInputClass(form[`${prefix}_house_number`], false)}
                     value={form[`${prefix}_house_number`]} onChange={(e) => set(`${prefix}_house_number`, e.target.value)} />
             </div>
             <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">{t.apartment}</label>
-                <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                <input className={getInputClass(form[`${prefix}_apartment`], false)}
                     value={form[`${prefix}_apartment`]} onChange={(e) => set(`${prefix}_apartment`, e.target.value)} />
             </div>
         </div>
         <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.area}</label>
-            <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+            <input className={getInputClass(form[`${prefix}_area`], false)}
                 value={form[`${prefix}_area`]} onChange={(e) => set(`${prefix}_area`, e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
             <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">{t.city} *</label>
-                <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                <input className={getInputClass(form[`${prefix}_city`], true)}
                     value={form[`${prefix}_city`]} onChange={(e) => set(`${prefix}_city`, e.target.value)} required />
             </div>
             <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">{t.county} *</label>
-                <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                <input className={getInputClass(form[`${prefix}_county`], true)}
                     value={form[`${prefix}_county`]} onChange={(e) => set(`${prefix}_county`, e.target.value)} required />
             </div>
         </div>
     </div>
-);
+)};
 
 // Access type (Defined outside to prevent re-mounting)
-const AccessBlock = ({ prefix, form, t, set }) => (
+const AccessBlock = ({ prefix, form, t, set, prefilledFromBot }) => {
+    const isMissing = (val) => prefilledFromBot && (!val || String(val).trim() === '');
+    const baseInput = "w-full px-4 py-2.5 border rounded-lg focus:ring-2 outline-none text-sm transition-all";
+    const getInputClass = (val, required) => required && isMissing(val) ? `${baseInput} border-red-500 ring-2 ring-red-200 bg-red-50 focus:border-red-500` : `${baseInput} border-gray-200 focus:ring-red-200 focus:border-red-400`;
+    return (
     <div className="space-y-3 pt-3 border-t border-gray-100">
         <label className="block text-xs font-semibold text-gray-500">{t.accessType}</label>
         <div className="flex gap-3">
@@ -73,12 +81,12 @@ const AccessBlock = ({ prefix, form, t, set }) => (
         {form[`${prefix}_access`] === 'stairs' && (
             <div className="animate-in fade-in duration-300">
                 <label className="block text-xs font-semibold text-gray-500 mb-1">{t.floorNumber} *</label>
-                <input type="number" min="0" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                <input type="number" min="0" className={getInputClass(form[`${prefix}_floor`], true)}
                     value={form[`${prefix}_floor`]} onChange={(e) => set(`${prefix}_floor`, e.target.value)} required />
             </div>
         )}
     </div>
-);
+)};
 
 
 // Eircode routing key map (first 3 chars → City/County)
@@ -152,11 +160,30 @@ export function ServiceRequestForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [searchingEircode, setSearchingEircode] = useState({});
+    const [prefilledFromBot, setPrefilledFromBot] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const botDataParam = params.get('botData');
+        if (botDataParam) {
+            try {
+                const parsed = JSON.parse(decodeURIComponent(botDataParam));
+                setForm(prev => ({ ...prev, ...parsed }));
+                setPrefilledFromBot(true);
+            } catch (err) {
+                console.error("Failed to parse bot data from URL:", err);
+            }
+        }
+    }, []);
 
     const t = translations[lang];
 
     const changeLang = (l) => { setLang(l); localStorage.setItem('sr_lang', l); };
     const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+    const isMissing = (val) => prefilledFromBot && (!val || String(val).trim() === '');
+    const baseInput = "w-full px-4 py-2.5 border rounded-lg focus:ring-2 outline-none text-sm transition-all";
+    const getInputClass = (val, required) => required && isMissing(val) ? `${baseInput} border-red-500 ring-2 ring-red-200 bg-red-50 focus:border-red-500` : `${baseInput} border-gray-200 focus:ring-red-200 focus:border-red-400`;
 
     // Distance Calculation Logic
     useEffect(() => {
@@ -311,24 +338,24 @@ export function ServiceRequestForm() {
                     </h3>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">{t.fullName} *</label>
-                        <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                        <input className={getInputClass(form.client_name, true)}
                             value={form.client_name} onChange={(e) => set('client_name', e.target.value)} required />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.email} *</label>
-                            <input type="email" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                            <input type="email" className={getInputClass(form.client_email, true)}
                                 value={form.client_email} onChange={(e) => set('client_email', e.target.value)} required />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.whatsapp}</label>
-                            <input className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm"
+                            <input className={getInputClass(form.client_whatsapp, false)}
                                 placeholder={t.whatsappPlaceholder} value={form.client_whatsapp} onChange={(e) => set('client_whatsapp', e.target.value)} />
                         </div>
                     </div>
                     <div className="pt-3 border-t border-gray-100 space-y-3">
                         <label className="block text-xs font-semibold text-gray-400 uppercase">{t.residentialAddress}</label>
-                        <AddressBlock prefix="residential" form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} />
+                        <AddressBlock prefix="residential" form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} prefilledFromBot={prefilledFromBot} />
                     </div>
                 </div>
 
@@ -343,8 +370,8 @@ export function ServiceRequestForm() {
                             className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-400" />
                         <span className="text-sm text-gray-600 group-hover:text-gray-800">{t.sameAsResidential}</span>
                     </label>
-                    <AddressBlock prefix="pickup" disabled={form.pickup_same_as_residential} form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} />
-                    <AccessBlock prefix="pickup" form={form} t={t} set={set} />
+                    <AddressBlock prefix="pickup" disabled={form.pickup_same_as_residential} form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} prefilledFromBot={prefilledFromBot} />
+                    <AccessBlock prefix="pickup" form={form} t={t} set={set} prefilledFromBot={prefilledFromBot} />
                 </div>
 
                 {/* Section 3: Delivery Address */}
@@ -352,8 +379,8 @@ export function ServiceRequestForm() {
                     <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider flex items-center gap-2">
                         <MapPin size={16} /> {t.sectionDelivery}
                     </h3>
-                    <AddressBlock prefix="delivery" form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} />
-                    <AccessBlock prefix="delivery" form={form} t={t} set={set} />
+                    <AddressBlock prefix="delivery" form={form} t={t} searchingEircode={searchingEircode} handleEircode={handleEircode} set={set} prefilledFromBot={prefilledFromBot} />
+                    <AccessBlock prefix="delivery" form={form} t={t} set={set} prefilledFromBot={prefilledFromBot} />
 
                     {/* Distance Indicator */}
                     {form.distance_km && (
@@ -384,9 +411,10 @@ export function ServiceRequestForm() {
                             { key: 'other', icon: '📝', label: t.other },
                         ].map((opt) => (
                             <button key={opt.key} type="button"
-                                className={`py-4 px-3 rounded-xl border-2 text-center transition-all ${form.service_type === opt.key
-                                    ? 'border-[#8B0000] bg-red-50 text-[#8B0000] shadow-sm'
-                                    : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
+                                className={`py-4 px-3 rounded-xl border-2 text-center transition-all ${
+                                    form.service_type === opt.key ? 'border-[#8B0000] bg-red-50 text-[#8B0000] shadow-sm' : 
+                                    (prefilledFromBot && !form.service_type ? 'border-red-400 bg-red-50 animate-pulse ring-2 ring-red-200' : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50')
+                                }`}
                                 onClick={() => set('service_type', opt.key)}>
                                 <span className="text-2xl block mb-1">{opt.icon}</span>
                                 <span className="text-xs font-semibold">{opt.label}</span>
@@ -394,9 +422,9 @@ export function ServiceRequestForm() {
                         ))}
                     </div>
                     {form.service_type === 'other' && (
-                        <textarea className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 outline-none text-sm resize-none"
+                        <textarea className={getInputClass(form.service_type_other, true) + " resize-none"}
                             rows={3} placeholder={t.otherPlaceholder}
-                            value={form.service_type_other} onChange={(e) => set('service_type_other', e.target.value)} />
+                            value={form.service_type_other} onChange={(e) => set('service_type_other', e.target.value)} required />
                     )}
                 </div>
 

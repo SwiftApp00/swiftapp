@@ -29,8 +29,11 @@ CRITICAL RULES:
 
 FORM TRIGGER:
 - After greeting and getting the user's name, OR whenever the user asks for a "quote", "detailed quote", "estimate", or describes a complex move (house removal, furniture, multiple items), you SHOULD suggest our online form for a more accurate quote.
-- When offering the form, append "[SHOW_FORM]" at the end of your message.
-- Example: "To give you the most accurate quote, I recommend filling out our quick online form with all the details! [SHOW_FORM]"
+- When offering the form, you MUST append a tag with the partial data you gathered in this format:
+[SHOW_FORM: {"client_name": "...", "client_email": "...", "client_whatsapp": "...", "residential_eircode": "...", "pickup_city": "...", "delivery_city": "...", "service_type": "...", "preferred_date": "YYYY-MM-DD"}]
+- Only include the fields you already know. Omit the ones you don't know yet.
+- Append this tag at the END of your message.
+- Example: "To give you the most accurate quote, I recommend filling out our quick online form! [SHOW_FORM: {\"client_name\": \"John\"}]"
 - You can still continue the conversation after suggesting the form.
 `;
 

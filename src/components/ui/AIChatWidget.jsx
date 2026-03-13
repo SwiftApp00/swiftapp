@@ -12,6 +12,7 @@ export function AIChatWidget() {
     const [isLoading, setIsLoading] = useState(false);
     const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
     const [showFormButton, setShowFormButton] = useState(false);
+    const [formData, setFormData] = useState(null);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -61,16 +62,24 @@ export function AIChatWidget() {
             setShowWhatsAppButton(true);
         }
 
-        // 3. Check for Form Trigger: [SHOW_FORM]
-        if (aiResponse.includes('[SHOW_FORM]')) {
+        // 3. Check for Form Trigger: [SHOW_FORM] or [SHOW_FORM: {...}]
+        const formMatch = aiResponse.match(/\[SHOW_FORM(:\s*({.*?}))?\]/);
+        if (formMatch) {
             setShowFormButton(true);
+            if (formMatch[2]) {
+                try {
+                    setFormData(JSON.parse(formMatch[2]));
+                } catch (err) {
+                    console.error("Failed to parse form data:", err);
+                }
+            }
         }
 
         // 4. Sanitize Response (Remove tags)
         const cleanedResponse = aiResponse
             .replace(/\[SAVE_LEAD:\s*({.*?})\]/g, '')
             .replace(/\[SHOW_WHATSAPP\]/g, '')
-            .replace(/\[SHOW_FORM\]/g, '')
+            .replace(/\[SHOW_FORM(:\s*({.*?}))?\]/g, '')
             .trim();
 
         setIsLoading(false);
@@ -138,7 +147,7 @@ export function AIChatWidget() {
                     <div className="p-4 bg-white border-t border-gray-100">
                         {showFormButton && (
                             <a
-                                href="/request"
+                                href={formData ? `/request?botData=${encodeURIComponent(JSON.stringify(formData))}` : "/request"}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="mb-3 flex items-center justify-center gap-2 w-full py-2.5 bg-[#8B0000] hover:bg-red-900 text-white rounded-xl text-sm font-bold transition-all transform hover:scale-[1.02] shadow-md animate-in fade-in zoom-in duration-300"
