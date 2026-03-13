@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 /**
  * Generates a branded Quote PDF for Swift Transport & Solutions
@@ -91,7 +91,7 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
         tableData.push([1, quoteData.description || 'Transport Service', 1, `€${Number(quoteData.price || 0).toFixed(2)}`, `€${Number(quoteData.price || 0).toFixed(2)}`]);
     }
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 140,
         head: [['Item #', 'Description', 'Qty', 'Unit Price (€)', 'Total (€)']],
         body: tableData,
