@@ -410,9 +410,16 @@ export function ServiceRequests() {
                         </div>
                         {quoteItems.map((item, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-gray-50 rounded-lg p-2">
-                                <span className="col-span-5 text-sm text-gray-800 font-medium truncate" title={item.description}>
-                                    {item.description}
-                                </span>
+                                <div className="col-span-5 flex flex-col">
+                                    <span className="text-sm text-gray-800 font-medium break-words">
+                                        {item.description.split(' (')[0]}
+                                    </span>
+                                    {item.description.includes(' (') && (
+                                        <span className="text-xs text-gray-500 mt-0.5">
+                                            {item.description.substring(item.description.indexOf(' (')).replace(/[()]/g, '').trim()}
+                                        </span>
+                                    )}
+                                </div>
                                 <input
                                     type="number" min="1"
                                     className="col-span-2 w-full px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
