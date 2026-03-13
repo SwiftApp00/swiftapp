@@ -58,6 +58,12 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
         doc.text("VAT Registration Nr.: 201200000", 190, 73, { align: "right" });
     };
 
+    // Helper to sanitize emojis and unsupported Unicode for jsPDF
+    const sanitizePdfText = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[^\x00-\xFF\u20AC\u2013\u2014\u2018\u2019\u201C\u201D\u2022]/g, '').trim();
+    };
+
     addBranding();
 
     // 2. Bill To Section
@@ -69,16 +75,17 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
     doc.text("Bill To:", 25, 102);
 
     doc.setFont("helvetica", "normal");
-    doc.text(`Name: ${clientData.name || 'N/A'}`, 25, 108);
-    doc.text(`Address: ${clientData.street || ''} ${clientData.house_number || ''}, ${clientData.city || ''}`, 25, 113);
-    doc.text(`Eircode: ${clientData.eircode || ''}`, 25, 118);
-    doc.text(`Phone: ${clientData.phone || clientData.whatsapp || ''}`, 25, 123);
-    doc.text(`Email: ${clientData.email || ''}`, 25, 128);
+    doc.text(`Name: ${sanitizePdfText(clientData.name) || 'N/A'}`, 25, 108);
+    const addressLine = `${clientData.street || ''} ${clientData.house_number || ''}, ${clientData.city || ''}`.trim();
+    doc.text(`Address: ${sanitizePdfText(addressLine) || 'N/A'}`, 25, 113);
+    doc.text(`Eircode: ${sanitizePdfText(clientData.eircode) || ''}`, 25, 118);
+    doc.text(`Phone: ${sanitizePdfText(clientData.phone || clientData.whatsapp) || ''}`, 25, 123);
+    doc.text(`Email: ${sanitizePdfText(clientData.email) || ''}`, 25, 128);
 
     // 3. Items Table
     const tableData = (quoteData.items || []).map((item, index) => [
         index + 1,
-        item.description || 'Service',
+        sanitizePdfText(item.description) || 'Service',
         item.quantity || 1,
         `€${Number(item.unit_price || 0).toFixed(2)}`,
         `€${Number(item.total || 0).toFixed(2)}`
@@ -86,7 +93,7 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
 
     // If no items, add a placeholder
     if (tableData.length === 0) {
-        tableData.push([1, quoteData.description || 'Transport Service', 1, `€${Number(quoteData.price || 0).toFixed(2)}`, `€${Number(quoteData.price || 0).toFixed(2)}`]);
+        tableData.push([1, sanitizePdfText(quoteData.description) || 'Transport Service', 1, `€${Number(quoteData.price || 0).toFixed(2)}`, `€${Number(quoteData.price || 0).toFixed(2)}`]);
     }
 
     autoTable(doc, {
