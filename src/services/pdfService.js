@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { logoBase64 } from '../utils/logoBase64';
 
 /**
  * Generates a branded Quote PDF for Swift Transport & Solutions
@@ -23,14 +24,11 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
     // Helper to add the header/footer on each page if needed, but quotes are usually 1 page.
     const addBranding = () => {
         // Top Logo area
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(BRAND_COLOR[0], BRAND_COLOR[1], BRAND_COLOR[2]);
-        doc.setFontSize(28);
-        doc.text("S", 105, 20, { align: "center" });
-
-        doc.setFont("times", "bold");
-        doc.setFontSize(18);
-        doc.text("Swift Transport & Solutions", 105, 30, { align: "center" });
+        try {
+            doc.addImage(logoBase64, 'PNG', 75, 10, 60, 20.2); // 60x20 (aspect ratio ~3:1)
+        } catch (err) {
+            console.warn("Could not load logo image", err);
+        }
 
         // "QUOTATION" Title
         doc.setFont("helvetica", "bold");
