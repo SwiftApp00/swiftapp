@@ -136,9 +136,13 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
         finalY += 7;
     }
 
-    doc.text(`VAT (23%):`, 140, finalY);
-    doc.text(`€${Number(vat).toFixed(2)}`, 190, finalY, { align: "right" });
-    finalY += 3;
+    if (vat > 0) {
+        doc.text(`VAT (23%):`, 140, finalY);
+        doc.text(`€${Number(vat).toFixed(2)}`, 190, finalY, { align: "right" });
+        finalY += 3;
+    } else {
+        finalY += 3;
+    }
 
     doc.setDrawColor(200, 200, 200);
     doc.line(130, finalY, 190, finalY);

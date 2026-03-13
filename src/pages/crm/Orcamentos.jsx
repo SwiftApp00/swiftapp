@@ -17,6 +17,7 @@ export function Orcamentos() {
     const [form, setForm] = useState({ client_id: '', description: '', price: '', service_date: '' });
     const [quoteItems, setQuoteItems] = useState([{ description: '', quantity: 1, unit_price: 0 }]);
     const [discountPercent, setDiscountPercent] = useState(0);
+    const [hasVat, setHasVat] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     // Email confirmation dialog
@@ -56,7 +57,7 @@ export function Orcamentos() {
     // Calculations
     const calcSubtotal = () => quoteItems.reduce((sum, item) => sum + (Number(item.unit_price) || 0) * (Number(item.quantity) || 1), 0);
     const calcDiscountAmount = () => calcSubtotal() * (Number(discountPercent) || 0) / 100;
-    const calcVat = () => (calcSubtotal() - calcDiscountAmount()) * 0.23;
+    const calcVat = () => hasVat ? (calcSubtotal() - calcDiscountAmount()) * 0.23 : 0;
     const calcTotal = () => calcSubtotal() - calcDiscountAmount() + calcVat();
 
     const updateQuoteItem = (index, field, value) => {
@@ -78,6 +79,7 @@ export function Orcamentos() {
         setForm({ client_id: '', description: '', price: '', service_date: '' });
         setQuoteItems([{ description: '', quantity: 1, unit_price: 0 }]);
         setDiscountPercent(0);
+        setHasVat(true);
         setIsEditing(false);
         setEditingQuoteId(null);
     };
@@ -102,6 +104,7 @@ export function Orcamentos() {
                 : [{ description: quote.description || '', quantity: 1, unit_price: Number(quote.price) || 0 }]
         );
         setDiscountPercent(quote.discount_percent || 0);
+        setHasVat(quote.vat_amount == null ? true : Number(quote.vat_amount) > 0);
         setIsModalOpen(true);
     };
 
@@ -368,9 +371,15 @@ export function Orcamentos() {
                                 <span className="font-medium">-€{calcDiscountAmount().toFixed(2)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">VAT (23%)</span>
-                            <span className="font-medium">€{calcVat().toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                                <span className={hasVat ? "text-gray-500" : "text-gray-400"}>VAT (23%)</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={hasVat} onChange={() => setHasVat(!hasVat)} />
+                                    <div className="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#8B0000]"></div>
+                                </label>
+                            </div>
+                            <span className={hasVat ? "font-medium" : "font-medium text-gray-400 line-through"}>€{calcVat().toFixed(2)}</span>
                         </div>
                         <div className="border-t border-gray-200 pt-2 flex justify-between">
                             <span className="text-lg font-bold">TOTAL</span>
