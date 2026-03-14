@@ -89,8 +89,15 @@ export function Orcamentos() {
         setIsCheckingOverlap(true);
         setOverlapError(null);
         try {
-            const startISO = `${scheduleTimes.date}T${scheduleTimes.start}`;
-            const endISO = `${scheduleTimes.date}T${scheduleTimes.end}`;
+            const [y, mm, d] = scheduleTimes.date.split('-').map(Number);
+            const [h1, m1] = scheduleTimes.start.split(':').map(Number);
+            const [h2, m2] = scheduleTimes.end.split(':').map(Number);
+
+            const startDate = new Date(y, mm - 1, d, h1, m1);
+            const endDate = new Date(y, mm - 1, d, h2, m2);
+
+            const startISO = startDate.toISOString();
+            const endISO = endDate.toISOString();
 
             const { data: existingSchedules, error: fetchError } = await supabase
                 .from('schedules')
