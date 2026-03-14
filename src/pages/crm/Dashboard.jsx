@@ -231,10 +231,12 @@ export function Dashboard() {
                                             : 'border-t-gray-100'
                                     }`}>
                                         {activeSchedules.map((s, idx) => (
-                                            <div key={idx} className="mb-2 p-2 bg-[#8B0000] text-white rounded-lg shadow-md animate-in slide-in-from-left-2">
+                                            <div key={idx} className="mb-2 p-2 bg-[#8B0000] text-white rounded-lg shadow-md animate-in slide-in-from-left-2 border-l-4 border-red-300">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[10px] font-bold uppercase tracking-tighter opacity-80">{s.quotes?.quote_number}</span>
-                                                    <Clock size={10} className="opacity-80" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-tighter opacity-80">
+                                                        {new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(s.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                    <span className="text-[9px] bg-white/20 px-1 rounded font-mono">{s.quotes?.quote_number}</span>
                                                 </div>
                                                 <p className="text-xs font-bold truncate">{s.quotes?.clients?.name}</p>
                                                 <p className="text-[9px] opacity-90 truncate">{s.description}</p>

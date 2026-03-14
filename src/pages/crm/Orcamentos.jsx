@@ -46,7 +46,7 @@ export function Orcamentos() {
         setLoading(true);
         const { data } = await supabase
             .from('quotes')
-            .select('*, clients(*)')
+            .select('*, clients(*), schedules(*)')
             .order('created_at', { ascending: false });
         if (data) setQuotes(data);
         setLoading(false);
@@ -495,6 +495,22 @@ export function Orcamentos() {
                             <p className="text-sm font-medium">{selectedQuote.clients?.name || 'Unknown'}</p>
                             <p className="text-xs text-gray-500">{selectedQuote.clients?.email}</p>
                         </div>
+
+                        {selectedQuote.status === 'scheduled' && selectedQuote.schedules && selectedQuote.schedules.length > 0 && (
+                            <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-1">
+                                <p className="text-xs text-purple-400 font-bold uppercase flex items-center gap-1">
+                                    <Clock size={12} /> Scheduled Service
+                                </p>
+                                <p className="text-sm font-bold text-purple-900">
+                                    {new Date(selectedQuote.schedules[0].start_time).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-purple-700">
+                                    {new Date(selectedQuote.schedules[0].start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                                    {' - '}
+                                    {new Date(selectedQuote.schedules[0].end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-1">
                             <p className="text-xs text-gray-400 font-bold uppercase">Items</p>
