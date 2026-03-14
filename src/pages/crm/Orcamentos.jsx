@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { generateQuotePDF } from '../../services/pdfService';
-import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, X as XIcon } from 'lucide-react';
+import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon } from 'lucide-react';
+import { isOverlap } from '../../utils/securityUtils';
 
 export function Orcamentos() {
     const [quotes, setQuotes] = useState([]);
@@ -29,6 +30,13 @@ export function Orcamentos() {
     const [selectedQuote, setSelectedQuote] = useState(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+    // Scheduling
+    const [isSchedulingOpen, setIsSchedulingOpen] = useState(false);
+    const [schedulingQuote, setSchedulingQuote] = useState(null);
+    const [scheduleTimes, setScheduleTimes] = useState({ start: '', end: '' });
+    const [isCheckingOverlap, setIsCheckingOverlap] = useState(false);
+    const [overlapError, setOverlapError] = useState(null);
+
     useEffect(() => {
         fetchQuotes();
         fetchClients();
@@ -50,8 +58,73 @@ export function Orcamentos() {
     };
 
     const handleStatusChange = async (id, status) => {
+        if (status === 'approved') {
+            const quote = quotes.find(q => q.id === id);
+            setSchedulingQuote(quote);
+            // Default to service_date at 09:00 - 12:00
+            const baseDate = quote.service_date || new Date().toISOString().split('T')[0];
+            setScheduleTimes({
+                start: `${baseDate}T09:00`,
+                end: `${baseDate}T12:00`
+            });
+            setIsSchedulingOpen(true);
+            return;
+        }
+
         const { error } = await supabase.from('quotes').update({ status }).eq('id', id);
         if (!error) fetchQuotes();
+    };
+
+    const handleConfirmSchedule = async (type) => {
+        // type: 'only_approve' or 'schedule'
+        if (type === 'only_approve') {
+            await supabase.from('quotes').update({ status: 'approved' }).eq('id', schedulingQuote.id);
+            setIsSchedulingOpen(false);
+            fetchQuotes();
+            return;
+        }
+
+        // Check overlap
+        setIsCheckingOverlap(true);
+        setOverlapError(null);
+        try {
+            const { data: existingSchedules, error: fetchError } = await supabase
+                .from('schedules')
+                .select('*');
+            
+            if (fetchError) throw fetchError;
+
+            const hasOverlap = existingSchedules.some(s => 
+                isOverlap(scheduleTimes.start, scheduleTimes.end, s.start_time, s.end_time)
+            );
+
+            if (hasOverlap) {
+                setOverlapError('There is already a service scheduled for this time slot. Please choose another time.');
+                return;
+            }
+
+            // Save schedule
+            const { error: scheduleError } = await supabase.from('schedules').insert([{
+                quote_id: schedulingQuote.id,
+                start_time: scheduleTimes.start,
+                end_time: scheduleTimes.end,
+                description: schedulingQuote.description
+            }]);
+
+            if (scheduleError) throw scheduleError;
+
+            // Update quote status to scheduled
+            await supabase.from('quotes').update({ status: 'scheduled' }).eq('id', schedulingQuote.id);
+            
+            setIsSchedulingOpen(false);
+            fetchQuotes();
+            alert('Service scheduled successfully!');
+        } catch (err) {
+            console.error(err);
+            alert('Error creating schedule.');
+        } finally {
+            setIsCheckingOverlap(false);
+        }
     };
 
     // Calculations
@@ -234,7 +307,9 @@ export function Orcamentos() {
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'approved' ? 'bg-green-100 text-green-700' :
                     row.status === 'rejected' ? 'bg-red-100 text-red-700' :
                         row.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
+                            row.status === 'scheduled' ? 'bg-purple-100 text-purple-700' :
+                                row.status === 'completed' ? 'bg-gray-800 text-white' :
+                                    'bg-gray-100 text-gray-700'
                     }`}>
                     {row.status?.toUpperCase()}
                 </span>
@@ -268,6 +343,11 @@ export function Orcamentos() {
                                     <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleStatusChange(row.id, 'approved')}>Approve</Button>
                                     <Button size="sm" variant="danger" onClick={() => handleStatusChange(row.id, 'rejected')}>Reject</Button>
                                 </>
+                            )}
+                            {row.status === 'scheduled' && (
+                                <Button size="sm" className="bg-gray-900 hover:bg-black text-white" onClick={() => handleStatusChange(row.id, 'completed')}>
+                                    <CheckCircle size={14} className="mr-1" /> Finalizar
+                                </Button>
                             )}
                             <Button size="sm" variant="outline" title="Edit" onClick={() => openEdit(row)}>
                                 <Pencil className="h-4 w-4" />
@@ -488,6 +568,66 @@ export function Orcamentos() {
                             >
                                 {isSendingEmail ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2" />}
                                 {isSendingEmail ? 'Sending...' : 'Yes, Send'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Scheduling Modal */}
+            <Modal isOpen={isSchedulingOpen} onClose={() => setIsSchedulingOpen(false)} title="Schedule Service?">
+                {schedulingQuote && (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-center gap-3">
+                            <CheckCircle2 className="text-green-600" size={24} />
+                            <div>
+                                <p className="text-sm font-bold text-green-800">Quote Approved!</p>
+                                <p className="text-xs text-green-600">Would you like to schedule this service in the calendar now?</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 p-1">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
+                                    <CalendarIcon size={12} /> Start Date & Time
+                                </label>
+                                <input 
+                                    type="datetime-local" 
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                    value={scheduleTimes.start}
+                                    onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
+                                    <Clock size={12} /> Forecasted End Date & Time
+                                </label>
+                                <input 
+                                    type="datetime-local" 
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                    value={scheduleTimes.end}
+                                    onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
+                                />
+                            </div>
+
+                            {overlapError && (
+                                <p className="text-xs text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
+                                    ⚠️ {overlapError}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => handleConfirmSchedule('only_approve')}>
+                                No, Just Approve
+                            </Button>
+                            <Button 
+                                className="flex-1 bg-[#8B0000] hover:bg-red-900"
+                                onClick={() => handleConfirmSchedule('schedule')}
+                                disabled={isCheckingOverlap || !scheduleTimes.start || !scheduleTimes.end}
+                            >
+                                {isCheckingOverlap ? <Loader2 size={16} className="animate-spin mr-2" /> : <CalendarIcon size={16} className="mr-2" />}
+                                {isCheckingOverlap ? 'Checking...' : 'Schedule Service'}
                             </Button>
                         </div>
                     </div>

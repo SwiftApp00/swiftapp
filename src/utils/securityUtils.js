@@ -252,6 +252,24 @@ export const getClientIp = async () => {
 
 
 // ============================================================
+// 6. DATE/TIME UTILS
+// ============================================================
+
+/**
+ * Checks if two date-time ranges overlap.
+ */
+export const isOverlap = (start1, end1, start2, end2) => {
+    const s1 = new Date(start1).getTime();
+    const e1 = new Date(end1).getTime();
+    const s2 = new Date(start2).getTime();
+    const e2 = new Date(end2).getTime();
+
+    // Overlap if (StartA < EndB) AND (EndA > StartB)
+    return s1 < e2 && e1 > s2;
+};
+
+
+// ============================================================
 // 6. INPUT LENGTH LIMITS (for HTML maxLength attributes)
 // ============================================================
 
