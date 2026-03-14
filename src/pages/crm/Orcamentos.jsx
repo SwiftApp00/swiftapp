@@ -407,12 +407,14 @@ export function Orcamentos() {
                                     type="number" min="1"
                                     className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
                                     value={item.quantity}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateQuoteItem(idx, 'quantity', e.target.value)}
                                 />
                                 <input
                                     type="number" min="0" step="0.01"
                                     className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-center focus:ring-2 focus:ring-red-200 outline-none"
                                     value={item.unit_price}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateQuoteItem(idx, 'unit_price', e.target.value)}
                                     placeholder="€"
                                 />
@@ -435,6 +437,7 @@ export function Orcamentos() {
                             type="number" min="0" max="100" step="0.5"
                             className="w-20 px-2 py-1.5 border border-yellow-300 rounded-md text-sm text-center focus:ring-2 focus:ring-yellow-200 outline-none"
                             value={discountPercent}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => setDiscountPercent(e.target.value)}
                         />
                         <span className="text-xs text-yellow-600">%</span>

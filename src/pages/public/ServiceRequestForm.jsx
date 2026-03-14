@@ -529,6 +529,7 @@ export function ServiceRequestForm() {
                                             type="number" min="1"
                                             className="w-16 px-2 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm text-center"
                                             value={item.quantity}
+                                            onFocus={(e) => e.target.select()}
                                             onChange={(e) => {
                                                 const updated = [...form.furniture_items];
                                                 updated[index] = { ...updated[index], quantity: Math.max(1, parseInt(e.target.value) || 1) };
