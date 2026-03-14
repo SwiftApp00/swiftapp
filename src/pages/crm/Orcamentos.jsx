@@ -33,7 +33,7 @@ export function Orcamentos() {
     // Scheduling
     const [isSchedulingOpen, setIsSchedulingOpen] = useState(false);
     const [schedulingQuote, setSchedulingQuote] = useState(null);
-    const [scheduleTimes, setScheduleTimes] = useState({ start: '', end: '' });
+    const [scheduleTimes, setScheduleTimes] = useState({ date: '', start: '09:00', end: '12:00' });
     const [isCheckingOverlap, setIsCheckingOverlap] = useState(false);
     const [overlapError, setOverlapError] = useState(null);
 
@@ -61,11 +61,12 @@ export function Orcamentos() {
         if (status === 'approved') {
             const quote = quotes.find(q => q.id === id);
             setSchedulingQuote(quote);
-            // Default to service_date at 09:00 - 12:00
+            // Default to service_date or today
             const baseDate = quote.service_date || new Date().toISOString().split('T')[0];
             setScheduleTimes({
-                start: `${baseDate}T09:00`,
-                end: `${baseDate}T12:00`
+                date: baseDate,
+                start: '09:00',
+                end: '12:00'
             });
             setIsSchedulingOpen(true);
             return;
@@ -88,6 +89,9 @@ export function Orcamentos() {
         setIsCheckingOverlap(true);
         setOverlapError(null);
         try {
+            const startISO = `${scheduleTimes.date}T${scheduleTimes.start}`;
+            const endISO = `${scheduleTimes.date}T${scheduleTimes.end}`;
+
             const { data: existingSchedules, error: fetchError } = await supabase
                 .from('schedules')
                 .select('*');
@@ -95,7 +99,7 @@ export function Orcamentos() {
             if (fetchError) throw fetchError;
 
             const hasOverlap = existingSchedules.some(s => 
-                isOverlap(scheduleTimes.start, scheduleTimes.end, s.start_time, s.end_time)
+                isOverlap(startISO, endISO, s.start_time, s.end_time)
             );
 
             if (hasOverlap) {
@@ -106,8 +110,8 @@ export function Orcamentos() {
             // Save schedule
             const { error: scheduleError } = await supabase.from('schedules').insert([{
                 quote_id: schedulingQuote.id,
-                start_time: scheduleTimes.start,
-                end_time: scheduleTimes.end,
+                start_time: startISO,
+                end_time: endISO,
                 description: schedulingQuote.description
             }]);
 
@@ -605,25 +609,38 @@ export function Orcamentos() {
                         <div className="space-y-3 p-1">
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
-                                    <CalendarIcon size={12} /> Start Date & Time
+                                    <CalendarIcon size={12} /> Service Date
                                 </label>
                                 <input 
-                                    type="datetime-local" 
+                                    type="date" 
                                     className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
-                                    value={scheduleTimes.start}
-                                    onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
+                                    value={scheduleTimes.date}
+                                    onChange={(e) => setScheduleTimes({ ...scheduleTimes, date: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
-                                    <Clock size={12} /> Forecasted End Date & Time
-                                </label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
-                                    value={scheduleTimes.end}
-                                    onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
-                                />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
+                                        <Clock size={12} /> Start Time
+                                    </label>
+                                    <input 
+                                        type="time" 
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                        value={scheduleTimes.start}
+                                        onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
+                                        <Clock size={12} /> End Time (Forecast)
+                                    </label>
+                                    <input 
+                                        type="time" 
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                        value={scheduleTimes.end}
+                                        onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
+                                    />
+                                </div>
                             </div>
 
                             {overlapError && (
@@ -640,7 +657,7 @@ export function Orcamentos() {
                             <Button 
                                 className="flex-1 bg-[#8B0000] hover:bg-red-900"
                                 onClick={() => handleConfirmSchedule('schedule')}
-                                disabled={isCheckingOverlap || !scheduleTimes.start || !scheduleTimes.end}
+                                disabled={isCheckingOverlap || !scheduleTimes.date || !scheduleTimes.start || !scheduleTimes.end}
                             >
                                 {isCheckingOverlap ? <Loader2 size={16} className="animate-spin mr-2" /> : <CalendarIcon size={16} className="mr-2" />}
                                 {isCheckingOverlap ? 'Checking...' : 'Schedule Service'}
