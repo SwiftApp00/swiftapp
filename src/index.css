@@ -32,7 +32,6 @@
   }
 
   @keyframes pulse {
-
     0%,
     100% {
       opacity: 0.4;
@@ -42,6 +41,21 @@
     50% {
       opacity: 1;
       transform: scale(1.2);
+    }
+  }
+
+  @keyframes notification-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(139, 0, 0, 0.4);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 0 15px rgba(139, 0, 0, 0);
+      transform: scale(1.02);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(139, 0, 0, 0);
+      transform: scale(1);
     }
   }
 }

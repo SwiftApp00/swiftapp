@@ -12,7 +12,7 @@ export function Dashboard() {
         totalLeads: 0,
         totalClients: 0,
         totalQuotes: 0,
-        revenue: 0,
+        newServiceRequests: 0,
     });
     const [schedules, setSchedules] = useState([]);
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -47,30 +47,34 @@ export function Dashboard() {
 
     const fetchStats = async () => {
         // Note: in a real app, this would be a custom DB function or a combined backend query
-        const [leadsRes, clientsRes, quotesRes, financeRes] = await Promise.all([
+        const [leadsRes, clientsRes, quotesRes, serviceRequestsRes] = await Promise.all([
             supabase.from('leads').select('id', { count: 'exact', head: true }),
             supabase.from('clients').select('id', { count: 'exact', head: true }),
             supabase.from('quotes').select('id', { count: 'exact', head: true }),
-            supabase.from('finance').select('amount').eq('type', 'receivable'),
+            supabase.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
         ]);
-
-        const totalRevenue = financeRes.data
-            ? financeRes.data.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-            : 0;
 
         setStats({
             totalLeads: leadsRes.count || 0,
             totalClients: clientsRes.count || 0,
             totalQuotes: quotesRes.count || 0,
-            revenue: totalRevenue,
+            newServiceRequests: serviceRequestsRes.count || 0,
         });
     };
 
     const statCards = [
-        { title: 'Total Leads', value: stats.totalLeads, icon: Inbox, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { title: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
-        { title: 'Sent Quotes', value: stats.totalQuotes, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50' },
-        { title: 'Revenue (Receivables)', value: `€${stats.revenue.toLocaleString()}`, icon: Banknote, color: 'text-red-600', bg: 'bg-red-50' },
+        { title: 'Total Leads', value: stats.totalLeads, icon: Inbox, color: 'text-blue-600', bg: 'bg-blue-50', path: '/crm/leads' },
+        { title: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-green-600', bg: 'bg-green-50', path: '/crm/clientes' },
+        { title: 'Sent Quotes', value: stats.totalQuotes, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50', path: '/crm/orcamentos' },
+        { 
+            title: 'Service Requests', 
+            value: stats.newServiceRequests, 
+            icon: Clock, 
+            color: 'text-red-600', 
+            bg: 'bg-red-50', 
+            path: '/crm/service-requests',
+            shouldPulse: stats.newServiceRequests > 0 
+        },
     ];
 
     // Calendar logic
@@ -107,7 +111,12 @@ export function Dashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((stat, idx) => (
-                    <Card key={idx} className="p-6 flex items-center gap-4 border-l-4" style={{ borderLeftColor: stat.title === 'Revenue (Receivables)' ? '#8B0000' : '' }}>
+                    <Card 
+                        key={idx} 
+                        className={`p-6 flex items-center gap-4 border-l-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 active:scale-95 ${stat.shouldPulse ? 'animate-[notification-pulse_2s_infinite]' : ''}`} 
+                        style={{ borderLeftColor: stat.title === 'Service Requests' ? '#8B0000' : '' }}
+                        onClick={() => navigate(stat.path)}
+                    >
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${stat.bg} ${stat.color}`}>
                             <stat.icon size={24} />
                         </div>
@@ -115,6 +124,9 @@ export function Dashboard() {
                             <p className="text-sm font-medium text-gray-500">{stat.title}</p>
                             <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
                         </div>
+                        {stat.shouldPulse && (
+                            <div className="absolute top-2 right-2 w-3 h-3 bg-red-600 rounded-full animate-ping" />
+                        )}
                     </Card>
                 ))}
             </div>
