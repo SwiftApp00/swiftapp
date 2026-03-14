@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { generateQuotePDF } from '../../services/pdfService';
-import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon } from 'lucide-react';
+import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown } from 'lucide-react';
 import { isOverlap } from '../../utils/securityUtils';
 
 const TIME_OPTIONS = [];
@@ -653,25 +653,31 @@ export function Orcamentos() {
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
                                         <Clock size={12} /> Start Time
                                     </label>
-                                    <select 
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white"
-                                        value={scheduleTimes.start}
-                                        onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
-                                    >
-                                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <select 
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white appearance-none pr-8 cursor-pointer"
+                                            value={scheduleTimes.start}
+                                            onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
+                                        >
+                                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
                                         <Clock size={12} /> End Time (Forecast)
                                     </label>
-                                    <select 
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white"
-                                        value={scheduleTimes.end}
-                                        onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
-                                    >
-                                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <select 
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white appearance-none pr-8 cursor-pointer"
+                                            value={scheduleTimes.end}
+                                            onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
+                                        >
+                                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
                                 </div>
                             </div>
 
