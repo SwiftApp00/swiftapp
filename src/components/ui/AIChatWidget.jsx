@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, User, Bot, Loader2, ExternalLink, ClipboardList } from 'lucide-react';
+import { MessageCircle, X, Send, User, Bot, Loader2, ExternalLink, ClipboardList, ShieldAlert } from 'lucide-react';
 import { chatService } from '../../services/geminiService';
 import { Button } from './Button';
+import { sanitizeInput, checkRateLimit, INPUT_LIMITS } from '../../utils/securityUtils';
 
 export function AIChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,7 @@ export function AIChatWidget() {
     const [showWhatsAppButton, setShowWhatsAppButton] = useState(false);
     const [showFormButton, setShowFormButton] = useState(false);
     const [formData, setFormData] = useState(null);
+    const [rateLimitWarning, setRateLimitWarning] = useState(null);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -29,7 +31,20 @@ export function AIChatWidget() {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
-        const userMsg = input.trim();
+        // Rate limit: max 20 messages per 5 minutes
+        const rl = checkRateLimit('chat_message', 20, 5 * 60 * 1000);
+        if (!rl.allowed) {
+            const secs = Math.ceil((rl.remainingMs || 0) / 1000);
+            setRateLimitWarning(`Too many messages. Please wait ${secs}s.`);
+            setTimeout(() => setRateLimitWarning(null), 5000);
+            return;
+        }
+        setRateLimitWarning(null);
+
+        // Sanitize and cap input length
+        const userMsg = sanitizeInput(input.trim()).substring(0, INPUT_LIMITS.chatMessage);
+        if (!userMsg) return;
+
         setInput('');
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setIsLoading(true);
@@ -75,12 +90,13 @@ export function AIChatWidget() {
             }
         }
 
-        // 4. Sanitize Response (Remove tags)
-        const cleanedResponse = aiResponse
-            .replace(/\[SAVE_LEAD:\s*({.*?})\]/g, '')
-            .replace(/\[SHOW_WHATSAPP\]/g, '')
-            .replace(/\[SHOW_FORM(:\s*({.*?}))?\]/g, '')
-            .trim();
+        // 4. Sanitize Response (Remove tags and strip any HTML from AI output)
+        const cleanedResponse = sanitizeInput(
+            aiResponse
+                .replace(/\[SAVE_LEAD:\s*({.*?})\]/g, '')
+                .replace(/\[SHOW_WHATSAPP\]/g, '')
+                .replace(/\[SHOW_FORM(:\s*({.*?}))?\]/g, '')
+        ).trim();
 
         setIsLoading(false);
         setMessages(prev => [...prev, { role: 'model', content: cleanedResponse || "I'm ready to help! Please let me know how I can assist you further." }]);
@@ -168,11 +184,18 @@ export function AIChatWidget() {
                             </a>
                         )}
                         <form onSubmit={handleSend} className="flex gap-2">
+                            {rateLimitWarning && (
+                                <div className="absolute bottom-20 left-4 right-4 bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-600 flex items-center gap-1.5 shadow-md animate-in fade-in duration-200">
+                                    <ShieldAlert size={14} />
+                                    {rateLimitWarning}
+                                </div>
+                            )}
                             <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Write a message..."
+                                maxLength={INPUT_LIMITS.chatMessage}
                                 className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#8B0000] outline-none transition-all"
                             />
                             <button

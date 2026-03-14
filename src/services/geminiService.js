@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { sanitizeInput, getClientIp } from '../utils/securityUtils';
 
 const getApiKey = () => {
     const key = import.meta.env.VITE_GEMINI_API_KEY;
@@ -41,16 +42,19 @@ FORM TRIGGER:
 export const chatService = {
     async saveLead(leadData) {
         try {
+            // Sanitize all lead fields from AI-parsed JSON
+            const ip = await getClientIp();
             const { error } = await supabase
                 .from('leads')
                 .insert([
                     {
-                        name: leadData.name,
-                        items_to_move: leadData.items_to_move,
-                        pickup_address: leadData.pickup_address,
-                        delivery_address: leadData.delivery_address,
+                        name: sanitizeInput(leadData.name),
+                        items_to_move: sanitizeInput(leadData.items_to_move),
+                        pickup_address: sanitizeInput(leadData.pickup_address),
+                        delivery_address: sanitizeInput(leadData.delivery_address),
                         preferred_date: leadData.preferred_date || null,
-                        status: 'new'
+                        status: 'new',
+                        client_ip: ip || null,
                     }
                 ]);
             if (error) throw error;

@@ -3,7 +3,8 @@ import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent } from 'lucide-react';
+import { generateQuotePDF } from '../../services/pdfService';
+import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail } from 'lucide-react';
 
 export function ServiceRequests() {
     const [requests, setRequests] = useState([]);
@@ -11,6 +12,11 @@ export function ServiceRequests() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Email confirmation state
+    const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+    const [savedQuoteData, setSavedQuoteData] = useState(null);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
 
     // Quote generation modal state
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -181,7 +187,7 @@ export function ServiceRequests() {
             const qNumber = qNumData || `QT-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
             // 4. Create quote
-            const { error: quoteError } = await supabase
+            const { data: createdQuote, error: quoteError } = await supabase
                 .from('quotes')
                 .insert([{
                     client_id: clientId,
@@ -195,7 +201,9 @@ export function ServiceRequests() {
                     discount_amount: discountAmt,
                     vat_amount: vat,
                     total,
-                }]);
+                }])
+                .select('*, clients(*)')
+                .single();
 
             if (quoteError) throw quoteError;
 
@@ -205,15 +213,68 @@ export function ServiceRequests() {
                 .update({ status: 'quoted' })
                 .eq('id', sr.id);
 
-            alert(`Quote ${qNumber} generated successfully!`);
             setIsQuoteModalOpen(false);
             setIsModalOpen(false);
             fetchRequests();
+
+            // Show email confirmation dialog
+            setSavedQuoteData(createdQuote);
+            setShowEmailConfirm(true);
         } catch (err) {
             console.error('Generate quote error:', err);
             alert('Error generating quote: ' + (err.message || 'Unknown error'));
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleSendEmail = async () => {
+        if (!savedQuoteData) return;
+        setIsSendingEmail(true);
+
+        try {
+            const client = savedQuoteData.clients;
+            if (!client?.email) {
+                alert('Client has no email address.');
+                return;
+            }
+
+            // Generate PDF as base64
+            const pdfBase64 = generateQuotePDF(savedQuoteData, client, { returnBase64: true });
+
+            // Call edge function to send email
+            const { error } = await supabase.functions.invoke('send-service-request-emails', {
+                body: {
+                    type: 'quote',
+                    client_name: client.name,
+                    client_email: client.email,
+                    quote_number: savedQuoteData.quote_number,
+                    total: savedQuoteData.total,
+                    pdf_base64: pdfBase64,
+                }
+            });
+
+            if (error) console.error('Email send error:', error);
+
+            // Log the email in the quote
+            const now = new Date().toISOString();
+            const emailLogs = [...(savedQuoteData.email_logs || []), {
+                sent_at: now,
+                recipient: client.email,
+                type: 'quote_pdf',
+            }];
+
+            await supabase.from('quotes').update({ email_logs: emailLogs, status: 'sent' }).eq('id', savedQuoteData.id);
+
+            alert('Email sent successfully!');
+            setShowEmailConfirm(false);
+            setSavedQuoteData(null);
+            fetchRequests();
+        } catch (err) {
+            console.error('Email error:', err);
+            alert('Error sending email: ' + (err.message || 'Unknown'));
+        } finally {
+            setIsSendingEmail(false);
         }
     };
 
@@ -504,6 +565,34 @@ export function ServiceRequests() {
                         </Button>
                     </div>
                 </div>
+            </Modal>
+
+            {/* Email Confirmation Dialog */}
+            <Modal isOpen={showEmailConfirm} onClose={() => { setShowEmailConfirm(false); setSavedQuoteData(null); }} title="Send Quote by Email?">
+                {savedQuoteData && (
+                    <div className="space-y-4 text-center">
+                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                            <Mail size={28} className="text-blue-600" />
+                        </div>
+                        <p className="text-sm text-gray-600">
+                            Send quote <strong>{savedQuoteData.quote_number}</strong> to <strong>{savedQuoteData.clients?.email || 'client'}</strong>?
+                        </p>
+                        <p className="text-xs text-gray-400">A PDF will be generated and sent as attachment.</p>
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => { setShowEmailConfirm(false); setSavedQuoteData(null); }}>
+                                No, Skip
+                            </Button>
+                            <Button
+                                className="flex-1 bg-[#8B0000] hover:bg-red-900"
+                                onClick={handleSendEmail}
+                                disabled={isSendingEmail}
+                            >
+                                {isSendingEmail ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2" />}
+                                {isSendingEmail ? 'Sending...' : 'Yes, Send'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

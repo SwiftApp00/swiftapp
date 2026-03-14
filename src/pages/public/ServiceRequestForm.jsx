@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { getDistanceBetweenEircodes } from '../../services/distanceService';
 import translations from '../../i18n/formTranslations';
-import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar, Plus, X } from 'lucide-react';
+import { Loader2, CheckCircle2, MapPin, Truck, Package, Wrench, ParkingCircle, Calendar, Plus, X, ShieldAlert } from 'lucide-react';
+import {
+    sanitizeInput, sanitizeObject, validateServiceRequestForm,
+    checkRateLimit, getCsrfToken, validateCsrfToken,
+    getClientIp, INPUT_LIMITS
+} from '../../utils/securityUtils';
 
 // Reusable Address Block (Defined outside to prevent re-mounting on every keystroke)
 const AddressBlock = ({ prefix, disabled = false, form, t, searchingEircode, handleEircode, set, prefilledFromBot }) => {
@@ -161,6 +166,16 @@ export function ServiceRequestForm() {
     const [submitted, setSubmitted] = useState(false);
     const [searchingEircode, setSearchingEircode] = useState({});
     const [prefilledFromBot, setPrefilledFromBot] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
+    const [rateLimitError, setRateLimitError] = useState(null);
+    const [csrfToken, setCsrfToken] = useState(null);
+    const [clientIp, setClientIp] = useState(null);
+
+    // Security: Generate CSRF token and capture IP on mount
+    useEffect(() => {
+        setCsrfToken(getCsrfToken());
+        getClientIp().then(ip => setClientIp(ip));
+    }, []);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -259,18 +274,46 @@ export function ServiceRequestForm() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setValidationErrors({});
+        setRateLimitError(null);
+
+        // 1. CSRF Verification
+        if (!validateCsrfToken(csrfToken)) {
+            alert('Security error: invalid session. Please refresh the page.');
+            return;
+        }
+
+        // 2. Input Validation
+        const { valid, errors } = validateServiceRequestForm(form);
+        if (!valid) {
+            setValidationErrors(errors);
+            return;
+        }
+
+        // 3. Rate Limit (max 3 submissions per 10 minutes)
+        const rl = checkRateLimit('form_submit', 3, 10 * 60 * 1000);
+        if (!rl.allowed) {
+            const mins = Math.ceil((rl.remainingMs || 0) / 60000);
+            setRateLimitError(`Too many submissions. Please wait ${mins} minute(s) before trying again.`);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const params = new URLSearchParams(window.location.search);
             const leadId = params.get('lead_id');
 
-            // Map furniture_items to DB columns
+            // 4. Sanitize all form data
             const { furniture_items, ...formData } = form;
+            const sanitizedFormData = sanitizeObject(formData);
+            const sanitizedItems = furniture_items.map(item => sanitizeObject(item));
+
             const payload = {
-                ...formData,
-                items: furniture_items.length > 0 ? furniture_items : null,
-                assembly_items: furniture_items.filter(i => i.description.trim()).map(i => `${i.description} (x${i.quantity})`).join(', ') || null,
+                ...sanitizedFormData,
+                items: sanitizedItems.length > 0 ? sanitizedItems : null,
+                assembly_items: sanitizedItems.filter(i => i.description?.trim()).map(i => `${i.description} (x${i.quantity})`).join(', ') || null,
                 lead_id: leadId || null,
+                client_ip: clientIp || null,
             };
 
             const { error } = await supabase.from('service_requests').insert([payload]);
@@ -279,11 +322,11 @@ export function ServiceRequestForm() {
             // Trigger Email Notifications (Secondary, don't block on error)
             supabase.functions.invoke('send-service-request-emails', {
                 body: {
-                    client_name: form.client_name,
-                    client_email: form.client_email,
-                    service_type: form.service_type === 'other' ? form.service_type_other : form.service_type,
-                    pickup_city: form.pickup_city,
-                    delivery_city: form.delivery_city,
+                    client_name: sanitizedFormData.client_name,
+                    client_email: sanitizedFormData.client_email,
+                    service_type: sanitizedFormData.service_type === 'other' ? sanitizedFormData.service_type_other : sanitizedFormData.service_type,
+                    pickup_city: sanitizedFormData.pickup_city,
+                    delivery_city: sanitizedFormData.delivery_city,
                 }
             }).catch(e => console.error('Email trigger failed:', e));
 
@@ -339,18 +382,21 @@ export function ServiceRequestForm() {
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">{t.fullName} *</label>
                         <input className={getInputClass(form.client_name, true)}
-                            value={form.client_name} onChange={(e) => set('client_name', e.target.value)} required />
+                            value={form.client_name} onChange={(e) => set('client_name', e.target.value)} required maxLength={INPUT_LIMITS.name} />
+                        {validationErrors.client_name && <p className="text-xs text-red-500 mt-1">{validationErrors.client_name}</p>}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.email} *</label>
                             <input type="email" className={getInputClass(form.client_email, true)}
-                                value={form.client_email} onChange={(e) => set('client_email', e.target.value)} required />
+                                value={form.client_email} onChange={(e) => set('client_email', e.target.value)} required maxLength={INPUT_LIMITS.email} />
+                            {validationErrors.client_email && <p className="text-xs text-red-500 mt-1">{validationErrors.client_email}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">{t.whatsapp}</label>
                             <input className={getInputClass(form.client_whatsapp, false)}
-                                placeholder={t.whatsappPlaceholder} value={form.client_whatsapp} onChange={(e) => set('client_whatsapp', e.target.value)} />
+                                placeholder={t.whatsappPlaceholder} value={form.client_whatsapp} onChange={(e) => set('client_whatsapp', e.target.value)} maxLength={INPUT_LIMITS.phone} />
+                            {validationErrors.client_whatsapp && <p className="text-xs text-red-500 mt-1">{validationErrors.client_whatsapp}</p>}
                         </div>
                     </div>
                     <div className="pt-3 border-t border-gray-100 space-y-3">
@@ -608,11 +654,27 @@ export function ServiceRequestForm() {
 
                 {/* Submit */}
                 {form.needs_assembly !== null && (
-                    <button type="submit" disabled={isSubmitting}
-                        className="w-full py-4 bg-[#8B0000] hover:bg-red-900 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 animate-in fade-in duration-500">
-                        {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : null}
-                        {isSubmitting ? t.submitting : t.submit}
-                    </button>
+                    <div className="space-y-3 animate-in fade-in duration-500">
+                        {rateLimitError && (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 text-red-700 text-sm">
+                                <ShieldAlert size={18} />
+                                {rateLimitError}
+                            </div>
+                        )}
+                        {Object.keys(validationErrors).length > 0 && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-yellow-800 text-sm">
+                                <p className="font-semibold mb-1">Please fix the following errors:</p>
+                                <ul className="list-disc list-inside text-xs space-y-0.5">
+                                    {Object.values(validationErrors).map((err, i) => <li key={i}>{err}</li>)}
+                                </ul>
+                            </div>
+                        )}
+                        <button type="submit" disabled={isSubmitting}
+                            className="w-full py-4 bg-[#8B0000] hover:bg-red-900 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                            {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : null}
+                            {isSubmitting ? t.submitting : t.submit}
+                        </button>
+                    </div>
                 )}
             </form>
         </div>
