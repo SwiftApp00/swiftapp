@@ -70,7 +70,8 @@ export function Dashboard() {
             color: 'text-red-600', 
             bg: 'bg-red-50', 
             path: '/crm/service-requests',
-            shouldPulse: stats.newServiceRequests > 0 
+            shouldPulse: stats.newServiceRequests > 0,
+            state: { status: 'new' }
         },
         { title: 'Total Leads', value: stats.totalLeads, icon: Inbox, color: 'text-blue-600', bg: 'bg-blue-50', path: '/crm/leads' },
         { title: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-green-600', bg: 'bg-green-50', path: '/crm/clientes' },
@@ -115,7 +116,7 @@ export function Dashboard() {
                         key={idx} 
                         className={`p-6 flex items-center gap-4 border-l-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 active:scale-95 ${stat.shouldPulse ? 'animate-[notification-pulse_2s_infinite]' : ''}`} 
                         style={{ borderLeftColor: stat.title === 'Service Requests' ? '#8B0000' : '' }}
-                        onClick={() => navigate(stat.path)}
+                        onClick={() => navigate(stat.path, { state: stat.state })}
                     >
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${stat.bg} ${stat.color}`}>
                             <stat.icon size={24} />

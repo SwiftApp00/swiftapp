@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -7,8 +8,10 @@ import { generateQuotePDF } from '../../services/pdfService';
 import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail } from 'lucide-react';
 
 export function ServiceRequests() {
+    const location = useLocation();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [statusFilter, setStatusFilter] = useState('all');
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -25,6 +28,13 @@ export function ServiceRequests() {
     const [hasVat, setHasVat] = useState(true);
 
     useEffect(() => { fetchRequests(); }, []);
+
+    // Handle incoming filter from Dashboard
+    useEffect(() => {
+        if (location.state?.status) {
+            setStatusFilter(location.state.status);
+        }
+    }, [location.state]);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -322,6 +332,34 @@ export function ServiceRequests() {
                 <Button onClick={fetchRequests} variant="outline" size="sm">Refresh</Button>
             </div>
 
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+                {[
+                    { id: 'all', label: 'All', count: requests.length },
+                    { id: 'new', label: 'New', count: requests.filter(r => r.status === 'new').length },
+                    { id: 'quoted', label: 'Quoted', count: requests.filter(r => r.status === 'quoted').length },
+                    { id: 'approved', label: 'Approved', count: requests.filter(r => r.status === 'approved').length },
+                    { id: 'completed', label: 'Completed', count: requests.filter(r => r.status === 'completed').length },
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setStatusFilter(tab.id)}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                            statusFilter === tab.id
+                                ? 'bg-[#8B0000] text-white shadow-md'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                    >
+                        {tab.label}
+                        <span className={`px-1.5 py-0.5 rounded-lg text-[10px] ${
+                            statusFilter === tab.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                        }`}>
+                            {tab.count}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
             {loading ? (
                 <div className="h-64 flex items-center justify-center text-gray-400">
                     <Loader2 className="animate-spin mr-2" /> Loading...
@@ -335,7 +373,7 @@ export function ServiceRequests() {
             ) : (
                 <Table
                     columns={columns}
-                    data={requests}
+                    data={requests.filter(r => statusFilter === 'all' || r.status === statusFilter)}
                     keyExtractor={(row) => row.id}
                     onRowClick={handleRowClick}
                 />
