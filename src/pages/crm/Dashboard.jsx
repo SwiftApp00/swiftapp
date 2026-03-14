@@ -63,9 +63,6 @@ export function Dashboard() {
     };
 
     const statCards = [
-        { title: 'Total Leads', value: stats.totalLeads, icon: Inbox, color: 'text-blue-600', bg: 'bg-blue-50', path: '/crm/leads' },
-        { title: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-green-600', bg: 'bg-green-50', path: '/crm/clientes' },
-        { title: 'Sent Quotes', value: stats.totalQuotes, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50', path: '/crm/orcamentos' },
         { 
             title: 'Service Requests', 
             value: stats.newServiceRequests, 
@@ -75,6 +72,9 @@ export function Dashboard() {
             path: '/crm/service-requests',
             shouldPulse: stats.newServiceRequests > 0 
         },
+        { title: 'Total Leads', value: stats.totalLeads, icon: Inbox, color: 'text-blue-600', bg: 'bg-blue-50', path: '/crm/leads' },
+        { title: 'Total Clients', value: stats.totalClients, icon: Users, color: 'text-green-600', bg: 'bg-green-50', path: '/crm/clientes' },
+        { title: 'Sent Quotes', value: stats.totalQuotes, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50', path: '/crm/orcamentos' },
     ];
 
     // Calendar logic
