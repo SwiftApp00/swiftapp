@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -8,7 +9,15 @@ import { generateQuotePDF } from '../../services/pdfService';
 import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon } from 'lucide-react';
 import { isOverlap } from '../../utils/securityUtils';
 
+const TIME_OPTIONS = [];
+for (let h = 7; h <= 20; h++) {
+    const hour = h < 10 ? `0${h}` : `${h}`;
+    TIME_OPTIONS.push(`${hour}:00`);
+    TIME_OPTIONS.push(`${hour}:30`);
+}
+
 export function Orcamentos() {
+    const location = useLocation();
     const [quotes, setQuotes] = useState([]);
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,6 +50,17 @@ export function Orcamentos() {
         fetchQuotes();
         fetchClients();
     }, []);
+
+    // Handle deep linked quote from Dashboard
+    useEffect(() => {
+        if (location.state?.selectedQuoteId && quotes.length > 0) {
+            const quote = quotes.find(q => q.id === location.state.selectedQuoteId);
+            if (quote) {
+                setSelectedQuote(quote);
+                setIsDetailOpen(true);
+            }
+        }
+    }, [location.state, quotes]);
 
     const fetchQuotes = async () => {
         setLoading(true);
@@ -633,23 +653,25 @@ export function Orcamentos() {
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
                                         <Clock size={12} /> Start Time
                                     </label>
-                                    <input 
-                                        type="time" 
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                    <select 
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white"
                                         value={scheduleTimes.start}
                                         onChange={(e) => setScheduleTimes({ ...scheduleTimes, start: e.target.value })}
-                                    />
+                                    >
+                                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-1">
                                         <Clock size={12} /> End Time (Forecast)
                                     </label>
-                                    <input 
-                                        type="time" 
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                                    <select 
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-100 outline-none text-sm bg-white"
                                         value={scheduleTimes.end}
                                         onChange={(e) => setScheduleTimes({ ...scheduleTimes, end: e.target.value })}
-                                    />
+                                    >
+                                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
                                 </div>
                             </div>
 

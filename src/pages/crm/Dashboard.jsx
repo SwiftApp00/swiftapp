@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -6,6 +7,7 @@ import { Users, FileText, Banknote, Inbox, ChevronLeft, ChevronRight, Calendar a
 import { Button } from '../../components/ui/Button';
 
 export function Dashboard() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         totalLeads: 0,
         totalClients: 0,
@@ -231,12 +233,16 @@ export function Dashboard() {
                                             : 'border-t-gray-100'
                                     }`}>
                                         {activeSchedules.map((s, idx) => (
-                                            <div key={idx} className="mb-2 p-2 bg-[#8B0000] text-white rounded-lg shadow-md animate-in slide-in-from-left-2 border-l-4 border-red-300">
+                                            <div 
+                                                key={idx} 
+                                                className="mb-2 p-2 bg-[#8B0000] text-white rounded-lg shadow-md animate-in slide-in-from-left-2 border-l-4 border-red-300 cursor-pointer hover:bg-red-900 transition-colors group/card"
+                                                onClick={() => navigate('/crm/orcamentos', { state: { selectedQuoteId: s.quote_id } })}
+                                            >
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className="text-[10px] font-bold uppercase tracking-tighter opacity-80">
                                                         {new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(s.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
-                                                    <span className="text-[9px] bg-white/20 px-1 rounded font-mono">{s.quotes?.quote_number}</span>
+                                                    <span className="text-[9px] bg-white/20 px-1 rounded font-mono group-hover/card:bg-white/30">{s.quotes?.quote_number}</span>
                                                 </div>
                                                 <p className="text-xs font-bold truncate">{s.quotes?.clients?.name}</p>
                                                 <p className="text-[9px] opacity-90 truncate">{s.description}</p>
