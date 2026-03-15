@@ -16,7 +16,16 @@ export function Financeiro() {
         setLoading(true);
         const { data } = await supabase
             .from('finance')
-            .select('*, quotes(description)')
+            .select(`
+                *,
+                quotes (
+                    quote_number,
+                    description,
+                    clients (
+                        name
+                    )
+                )
+            `)
             .eq('type', tab)
             .order('created_at', { ascending: false });
 
@@ -30,12 +39,15 @@ export function Financeiro() {
     };
 
     const columns = [
+        { header: 'Number', accessor: 'finance_number', render: (row) => <span className="font-mono text-xs font-bold text-gray-600">{row.finance_number || '-'}</span> },
+        { header: 'Quote', accessor: 'quote_id', render: (row) => <span className="font-mono text-xs font-bold text-blue-600">{row.quotes?.quote_number || '-'}</span> },
+        { header: 'Client', accessor: 'client_name', render: (row) => row.quotes?.clients?.name || '-' },
         { header: 'Description', accessor: 'description', render: (row) => row.description || row.quotes?.description || 'No description' },
-        { header: 'Amount', accessor: 'amount', render: (row) => `€${row.amount}` },
-        { header: 'Due Date', accessor: 'due_date', render: (row) => row.due_date ? new Date(row.due_date).toLocaleDateString() : '-' },
+        { header: 'Amount', accessor: 'amount', render: (row) => <span className="font-bold text-gray-900">€{Number(row.amount || 0).toFixed(2)}</span> },
+        { header: 'Approved Date', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
         {
             header: 'Status', accessor: 'status', render: (row) => (
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'
+                <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${row.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'
                     }`}>
                     {row.status.toUpperCase()}
                 </span>

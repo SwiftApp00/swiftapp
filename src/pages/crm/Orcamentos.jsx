@@ -92,14 +92,46 @@ export function Orcamentos() {
             return;
         }
 
-        const { error } = await supabase.from('quotes').update({ status }).eq('id', id);
+        if (status === 'completed') {
+            // Update finance status when quote is completed
+            await supabase.from('finance').update({ status: 'paid' }).eq('quote_id', id);
+        }
+
+        const { error } = await supabase.from('quotes').update({ status: status }).eq('id', id);
         if (!error) fetchQuotes();
     };
 
+    const createFinanceRecord = async (quote) => {
+        try {
+            // Check if record already exists for this quote
+            const { data: existing } = await supabase.from('finance').select('id').eq('quote_id', quote.id).maybeSingle();
+            if (existing) return;
+
+            // Generate finance number
+            const { data: finNum } = await supabase.rpc('generate_finance_number');
+            
+            // Insert finance record
+            await supabase.from('finance').insert([{
+                quote_id: quote.id,
+                amount: quote.total || quote.price || 0,
+                description: quote.description || 'Service',
+                due_date: quote.service_date || new Date().toISOString().split('T')[0],
+                type: 'receivable',
+                status: 'pending',
+                finance_number: finNum || `REC-${new Date().getFullYear()}-MANUAL`
+            }]);
+        } catch (err) {
+            console.error('Error creating finance record:', err);
+        }
+    };
+
     const handleConfirmSchedule = async (type) => {
+        if (!schedulingQuote) return;
+        
         // type: 'only_approve' or 'schedule'
         if (type === 'only_approve') {
             await supabase.from('quotes').update({ status: 'approved' }).eq('id', schedulingQuote.id);
+            await createFinanceRecord(schedulingQuote);
             setIsSchedulingOpen(false);
             fetchQuotes();
             return;
@@ -146,6 +178,7 @@ export function Orcamentos() {
 
             // Update quote status to scheduled
             await supabase.from('quotes').update({ status: 'scheduled' }).eq('id', schedulingQuote.id);
+            await createFinanceRecord(schedulingQuote);
             
             setIsSchedulingOpen(false);
             fetchQuotes();
