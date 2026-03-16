@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
+import { logAction } from '../../services/auditLogger';
 
 // Irish Eircode Routing Key → City / County mapping
 // The first 3 characters of an Eircode identify the area
@@ -356,11 +357,14 @@ export function Clientes() {
                     .update(payload)
                     .eq('id', editingClient.id);
                 if (error) throw error;
+                await logAction('UPDATE', 'Clients', { client_id: editingClient.id, client_name: payload.name });
             } else {
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('clients')
-                    .insert([payload]);
+                    .insert([payload])
+                    .select();
                 if (error) throw error;
+                await logAction('CREATE', 'Clients', { client_id: data[0].id, client_name: payload.name });
             }
 
             handleCloseModal();
@@ -374,15 +378,17 @@ export function Clientes() {
     };
 
     const handleDelete = async () => {
-        if (!editingClient || !window.confirm("Are you sure?")) return;
+        if (!editingClient || !window.confirm(`Are you sure you want to permanently delete client "${editingClient.name}"? This action cannot be undone.`)) return;
         setIsSubmitting(true);
         try {
             const { error } = await supabase.from('clients').delete().eq('id', editingClient.id);
             if (error) throw error;
+            await logAction('DELETE', 'Clients', { client_id: editingClient.id, client_name: editingClient.name });
             handleCloseModal();
             fetchClients();
         } catch (err) {
             console.error("Delete error:", err);
+            alert("Error deleting client.");
         } finally {
             setIsSubmitting(false);
         }

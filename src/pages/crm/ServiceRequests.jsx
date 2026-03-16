@@ -5,7 +5,8 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { generateQuotePDF } from '../../services/pdfService';
-import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail } from 'lucide-react';
+import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail, Trash2 } from 'lucide-react';
+import { logAction } from '../../services/auditLogger';
 
 export function ServiceRequests() {
     const location = useLocation();
@@ -303,6 +304,24 @@ export function ServiceRequests() {
             setIsSendingEmail(false);
         }
     };
+    const handleDelete = async (e, request) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to permanently delete service request from "${request.client_name}"? This action cannot be undone.`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('service_requests')
+                .delete()
+                .eq('id', request.id);
+
+            if (error) throw error;
+            await logAction('DELETE', 'Service Requests', { request_id: request.id, client_name: request.client_name });
+            fetchRequests();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Error deleting service request.');
+        }
+    };
 
     const columns = [
         { header: 'Date', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
@@ -392,6 +411,15 @@ export function ServiceRequests() {
                     data={requests.filter(r => statusFilter === 'all' || r.status === statusFilter)}
                     keyExtractor={(row) => row.id}
                     onRowClick={handleRowClick}
+                    actions={(row) => (
+                        <button
+                            onClick={(e) => handleDelete(e, row)}
+                            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete Request"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    )}
                 />
             )}
 

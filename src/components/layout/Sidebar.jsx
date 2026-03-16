@@ -9,7 +9,8 @@ import {
     ClipboardList,
     LogOut,
     Menu,
-    X
+    X,
+    Settings
 } from 'lucide-react';
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
     { name: 'Service Requests', path: '/crm/service-requests', icon: ClipboardList },
     { name: 'Quotes', path: '/crm/orcamentos', icon: FileText },
     { name: 'Finance', path: '/crm/financeiro', icon: Banknote },
+    { name: 'Settings', path: '/crm/configuracoes', icon: Settings },
 ];
 
 export function Sidebar() {

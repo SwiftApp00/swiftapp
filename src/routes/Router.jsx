@@ -17,6 +17,7 @@ import { Clientes } from '../pages/crm/Clientes';
 import { ServiceRequests } from '../pages/crm/ServiceRequests';
 import { Orcamentos } from '../pages/crm/Orcamentos';
 import { Financeiro } from '../pages/crm/Financeiro';
+import { Configuracoes } from '../pages/crm/Configuracoes';
 
 export default function AppRoutes() {
     return (
@@ -35,6 +36,7 @@ export default function AppRoutes() {
                     <Route path="service-requests" element={<ServiceRequests />} />
                     <Route path="orcamentos" element={<Orcamentos />} />
                     <Route path="financeiro" element={<Financeiro />} />
+                    <Route path="configuracoes" element={<Configuracoes />} />
                     <Route path="" element={<Navigate to="/crm/dashboard" replace />} />
                 </Route>
             </Route>

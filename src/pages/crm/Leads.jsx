@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
+import { Trash2 } from 'lucide-react';
+import { logAction } from '../../services/auditLogger';
 
 export function Leads() {
     const [leads, setLeads] = useState([]);
@@ -29,8 +31,25 @@ export function Leads() {
             .eq('id', id);
 
         if (!error) {
+            await logAction('CONVERT', 'Leads', { lead_id: id });
             alert('Lead Converted to Client Successfully!');
             fetchLeads();
+        }
+    };
+
+    const handleDelete = async (lead) => {
+        if (!window.confirm(`Are you sure you want to permanently delete lead "${lead.name}"? This action cannot be undone.`)) return;
+
+        const { error } = await supabase
+            .from('leads')
+            .delete()
+            .eq('id', lead.id);
+
+        if (!error) {
+            await logAction('DELETE', 'Leads', { lead_id: lead.id, lead_name: lead.name });
+            fetchLeads();
+        } else {
+            alert('Error deleting lead.');
         }
     };
 
@@ -64,15 +83,24 @@ export function Leads() {
                     data={leads}
                     keyExtractor={(row) => row.id}
                     actions={(row) => (
-                        row.status !== 'converted' && (
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleConvert(row.id)}
+                        <div className="flex items-center gap-2">
+                            {row.status !== 'converted' && (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleConvert(row.id)}
+                                >
+                                    Convert to Client
+                                </Button>
+                            )}
+                            <button
+                                onClick={() => handleDelete(row)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete Lead"
                             >
-                                Convert to Client
-                            </Button>
-                        )
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
                     )}
                 />
             )}

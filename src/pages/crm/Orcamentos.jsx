@@ -6,7 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { generateQuotePDF, generateReceiptPDF } from '../../services/pdfService';
-import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown } from 'lucide-react';
+import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown, Trash2 } from 'lucide-react';
+import { logAction } from '../../services/auditLogger';
 import { isOverlap } from '../../utils/securityUtils';
 
 const TIME_OPTIONS = [];
@@ -104,7 +105,10 @@ export function Orcamentos() {
         }
 
         const { error } = await supabase.from('quotes').update({ status: status }).eq('id', id);
-        if (!error) fetchQuotes();
+        if (!error) {
+            await logAction('UPDATE_STATUS', 'Quotes', { quote_id: id, new_status: status });
+            fetchQuotes();
+        }
     };
 
     const createFinanceRecord = async (quote) => {
@@ -291,6 +295,7 @@ export function Orcamentos() {
                 const { data, error } = await supabase.from('quotes').update(payload).eq('id', editingQuoteId).select('*, clients(*)').single();
                 if (error) throw error;
                 savedQuote = data;
+                await logAction('UPDATE', 'Quotes', { quote_id: savedQuote.id, quote_number: savedQuote.quote_number });
             } else {
                 const { data: qNumData } = await supabase.rpc('generate_quote_number');
                 payload.quote_number = qNumData || `QT-${new Date().getFullYear()}-MANUAL`;
@@ -299,6 +304,7 @@ export function Orcamentos() {
                 const { data, error } = await supabase.from('quotes').insert([payload]).select('*, clients(*)').single();
                 if (error) throw error;
                 savedQuote = data;
+                await logAction('CREATE', 'Quotes', { quote_id: savedQuote.id, quote_number: savedQuote.quote_number });
             }
 
             setIsModalOpen(false);
@@ -313,6 +319,21 @@ export function Orcamentos() {
             alert('Error saving quote: ' + (err.message || 'Unknown error'));
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async (e, quote) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to permanently delete quote "${quote.quote_number}"? This action cannot be undone.`)) return;
+
+        try {
+            const { error } = await supabase.from('quotes').delete().eq('id', quote.id);
+            if (error) throw error;
+            await logAction('DELETE', 'Quotes', { quote_id: quote.id, quote_number: quote.quote_number });
+            fetchQuotes();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Error deleting quote.');
         }
     };
 
@@ -427,6 +448,15 @@ export function Orcamentos() {
                             </Button>
                             <Button size="sm" variant="outline" title="Send Email" onClick={() => { setSavedQuoteData(row); setShowEmailConfirm(true); }}>
                                 <Mail className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete Quote"
+                                onClick={(e) => handleDelete(e, row)}
+                            >
+                                <Trash2 size={16} />
                             </Button>
                         </div>
                     )}

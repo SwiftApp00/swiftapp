@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
+import { Trash2 } from 'lucide-react';
+import { logAction } from '../../services/auditLogger';
 
 export function Financeiro() {
     const [records, setRecords] = useState([]);
@@ -35,7 +37,23 @@ export function Financeiro() {
 
     const handleMarkPaid = async (id) => {
         const { error } = await supabase.from('finance').update({ status: 'paid' }).eq('id', id);
-        if (!error) fetchRecords();
+        if (!error) {
+            await logAction('UPDATE_STATUS', 'Finance', { record_id: id, new_status: 'paid' });
+            fetchRecords();
+        }
+    };
+
+    const handleDelete = async (id, number) => {
+        if (!window.confirm(`Are you sure you want to permanently delete record "${number || id}"? This action cannot be undone.`)) return;
+        try {
+            const { error } = await supabase.from('finance').delete().eq('id', id);
+            if (error) throw error;
+            await logAction('DELETE', 'Finance', { record_id: id, record_number: number });
+            fetchRecords();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Error deleting financial record.');
+        }
     };
 
     const columns = [
@@ -85,11 +103,20 @@ export function Financeiro() {
                     data={records}
                     keyExtractor={(row) => row.id}
                     actions={(row) => (
-                        row.status === 'pending' && (
-                            <Button size="sm" variant="secondary" onClick={() => handleMarkPaid(row.id)}>
-                                Mark Paid
-                            </Button>
-                        )
+                        <div className="flex gap-2">
+                            {row.status === 'pending' && (
+                                <Button size="sm" variant="secondary" onClick={() => handleMarkPaid(row.id)}>
+                                    Mark Paid
+                                </Button>
+                            )}
+                            <button
+                                onClick={() => handleDelete(row.id, row.finance_number)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete Record"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
                     )}
                 />
             )}
