@@ -5,7 +5,7 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { generateQuotePDF } from '../../services/pdfService';
+import { generateQuotePDF, generateReceiptPDF } from '../../services/pdfService';
 import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown } from 'lucide-react';
 import { isOverlap } from '../../utils/securityUtils';
 
@@ -95,6 +95,12 @@ export function Orcamentos() {
         if (status === 'completed') {
             // Update finance status when quote is completed
             await supabase.from('finance').update({ status: 'paid' }).eq('quote_id', id);
+
+            // Generate Receipt PDF
+            const quote = quotes.find(q => q.id === id);
+            if (quote) {
+                generateReceiptPDF(quote, quote.clients);
+            }
         }
 
         const { error } = await supabase.from('quotes').update({ status: status }).eq('id', id);

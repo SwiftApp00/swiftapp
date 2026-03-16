@@ -192,3 +192,119 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
         doc.save(`Quote_${quoteData.quote_number || 'Draft'}.pdf`);
     }
 };
+
+/**
+ * Generates a branded Receipt PDF for Swift Transport & Solutions
+ * @param {Object} quoteData - The quote information
+ * @param {Object} clientData - The client information
+ */
+export const generateReceiptPDF = (quoteData, clientData) => {
+    const doc = new jsPDF();
+    const BRAND_COLOR = [139, 0, 0]; // Dark Red #8B0000
+    const LIGHT_GRAY = [245, 245, 245];
+
+    const addBranding = () => {
+        try {
+            doc.addImage(logoBase64, 'PNG', 75, 10, 60, 20.2);
+        } catch (err) {
+            console.warn("Could not load logo image", err);
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(24);
+        doc.text("RECEIPT", 20, 50);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const receiptNum = quoteData.quote_number?.replace('QT', 'REC') || 'REC-XXXX-XXXX';
+        const date = new Date().toLocaleDateString('en-GB');
+        doc.text(`Receipt number: ${receiptNum}`, 190, 45, { align: "right" });
+        doc.text(`Date: ${date}`, 190, 50, { align: "right" });
+
+        doc.setFillColor(BRAND_COLOR[0], BRAND_COLOR[1], BRAND_COLOR[2]);
+        doc.rect(0, 60, 210, 25, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.text("Address: 138 W Broad, Bresseth, RZ", 20, 68);
+        doc.text("Phone: +070 3867727", 20, 73);
+        doc.text("Email: info@swifttransport.ie", 20, 78);
+
+        doc.text("Company registration Nr. 2102000", 190, 68, { align: "right" });
+        doc.text("VAT Registration Nr.: 201200000", 190, 73, { align: "right" });
+    };
+
+    const sanitizePdfText = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[^\x00-\xFF\u20AC\u2013\u2014\u2018\u2019\u201C\u201D\u2022]/g, '').trim();
+    };
+
+    addBranding();
+
+    // Bill To
+    doc.setFillColor(LIGHT_GRAY[0], LIGHT_GRAY[1], LIGHT_GRAY[2]);
+    doc.rect(20, 95, 170, 35, 'F');
+    doc.setTextColor(40, 40, 40);
+    doc.setFont("helvetica", "bold");
+    doc.text("Client Information:", 25, 102);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${sanitizePdfText(clientData.name) || 'N/A'}`, 25, 108);
+    const addressLine = `${clientData.street || ''} ${clientData.house_number || ''}, ${clientData.city || ''}`.trim();
+    doc.text(`Address: ${sanitizePdfText(addressLine) || 'N/A'}`, 25, 113);
+    doc.text(`Phone: ${sanitizePdfText(clientData.phone || clientData.whatsapp) || ''}`, 25, 118);
+    doc.text(`Email: ${sanitizePdfText(clientData.email) || ''}`, 25, 123);
+
+    // Items
+    const tableData = (quoteData.items || []).map((item, index) => [
+        index + 1,
+        sanitizePdfText(item.description) || 'Service',
+        item.quantity || 1,
+        `€${Number(item.unit_price || 0).toFixed(2)}`,
+        `€${Number(item.total || 0).toFixed(2)}`
+    ]);
+
+    autoTable(doc, {
+        startY: 140,
+        head: [['Item #', 'Description', 'Qty', 'Unit Price (€)', 'Total (€)']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [100, 0, 0], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold', halign: 'center' },
+        columnStyles: { 0: { halign: 'center', cellWidth: 20 }, 2: { halign: 'center', cellWidth: 20 }, 3: { halign: 'right', cellWidth: 35 }, 4: { halign: 'right', cellWidth: 35 } },
+        alternateRowStyles: { fillColor: LIGHT_GRAY },
+        margin: { left: 20, right: 20 }
+    });
+
+    let finalY = doc.lastAutoTable.finalY + 10;
+    const total = quoteData.total || quoteData.price || 0;
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(BRAND_COLOR[0], BRAND_COLOR[1], BRAND_COLOR[2]);
+    doc.text(`TOTAL PAID:`, 140, finalY);
+    doc.text(`€${Number(total).toFixed(2)}`, 190, finalY, { align: "right" });
+
+    // Receipt Message
+    doc.setFontSize(11);
+    doc.setTextColor(40, 40, 40);
+    doc.setFont("helvetica", "bold");
+    doc.text("Observações:", 20, finalY + 25);
+    doc.setFont("helvetica", "normal");
+    
+    const message = `Confirmamos o recebimento do valor pago (€${Number(total).toFixed(2)}), nada tendo a reclamar. Confirmamos também a execução dos serviços descritos neste recibo. Swift Transport & Solutions sempre estará a disposição para eventuais esclarecimentos e possíveis novos negócios.`;
+    
+    const splitText = doc.splitTextToSize(message, 170);
+    doc.text(splitText, 20, finalY + 32);
+
+    // Footer
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setFillColor(BRAND_COLOR[0], BRAND_COLOR[1], BRAND_COLOR[2]);
+    doc.rect(0, pageHeight - 25, 210, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text("www.transport.com      @swifttransport      @swifttransport", 105, pageHeight - 12, { align: "center" });
+    doc.setFontSize(11);
+    doc.text("Thank you for choosing Swift Transport & Solutions", 105, pageHeight - 5, { align: "center" });
+
+    doc.save(`Receipt_${quoteData.quote_number?.replace('QT', 'REC') || 'Draft'}.pdf`);
+};

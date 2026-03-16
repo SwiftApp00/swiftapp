@@ -110,6 +110,22 @@ export function ServiceRequests() {
             });
         }
 
+        // Stairs info
+        if (sr.pickup_access === 'stairs') {
+            items.push({
+                description: `Stairs (Pickup - Floor ${sr.pickup_floor || '?'})`,
+                quantity: 1,
+                unit_price: 0,
+            });
+        }
+        if (sr.delivery_access === 'stairs') {
+            items.push({
+                description: `Stairs (Delivery - Floor ${sr.delivery_floor || '?'})`,
+                quantity: 1,
+                unit_price: 0,
+            });
+        }
+
         setQuoteItems(items);
         setDiscountPercent(0);
         setHasVat(true);
