@@ -277,6 +277,7 @@ export function Financeiro() {
         const paidPayableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').length;
         const pendingPayableAll = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').length;
+        const overduePayableCount = allRecords.filter(r => getDisplayStatus(r) === 'overdue_payable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -292,7 +293,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, overduePayableCount, monthlyData, receivables, payables };
     }, [allRecords]);
 
     // Columns for tables
@@ -488,7 +489,7 @@ export function Financeiro() {
                                         </span>
                                     </div>
                                 </div>
-                                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-2"><BarChart3 size={20} className="text-gray-500" /><h3 className="text-lg font-bold text-gray-900">Cashflow</h3></div>
                                         <div className="flex items-center gap-4 text-xs font-medium">
@@ -496,7 +497,26 @@ export function Financeiro() {
                                             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm" style={{ background: '#dc2626' }} /><span className="text-gray-500">Outflows</span></div>
                                         </div>
                                     </div>
-                                    <MiniBarChart data={stats.monthlyData} />
+                                    <div className="flex-1">
+                                        <MiniBarChart data={stats.monthlyData} />
+                                    </div>
+                                    {stats.overduePayableCount > 0 && (
+                                        <div 
+                                            onClick={() => { setActiveView('payable'); setFilterStatus('overdue'); }}
+                                            className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                                    <AlertCircle size={16} className="text-red-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-red-900">Overdue Payables</p>
+                                                    <p className="text-xs text-red-600">You have {stats.overduePayableCount} overdue account{stats.overduePayableCount > 1 ? 's' : ''} to pay.</p>
+                                                </div>
+                                            </div>
+                                            <ArrowUpRight size={16} className="text-red-400" />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                                     <div className="flex items-center gap-2 mb-4"><PieChart size={20} className="text-gray-500" /><h3 className="text-lg font-bold text-gray-900">Payment Status</h3></div>
