@@ -268,12 +268,12 @@ export function Financeiro() {
         const payables = allRecords.filter(r => r.type === 'payable');
         const totalReceivable = receivables.reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const totalPayable = payables.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-        const balance = totalReceivable - totalPayable;
-        const paidAll = allRecords.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const paidAll = allRecords.filter(r => r.status === 'paid' && r.type === 'receivable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const paidPayableAll = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const balance = paidAll - paidPayableAll;
         const awaitingPaymentAll = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const pendingAll = allRecords.filter(r => r.status !== 'paid' && !(r.status === 'pending' && r.type === 'receivable') && getDisplayStatus(r) !== 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const awaitingPaymentCount = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').length;
-        const paidPayableAll = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const paidPayableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').length;
         const pendingPayableAll = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable' && getDisplayStatus(r) !== 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable' && getDisplayStatus(r) !== 'overdue').length;
@@ -488,7 +488,7 @@ export function Financeiro() {
                                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Available Balance</p>
                                         <p className="text-3xl font-bold text-gray-900">€{stats.balance.toFixed(2)}</p>
                                         <span className={`flex items-center gap-1 text-sm font-bold mt-4 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {stats.balance >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}{allRecords.length} records
+                                            {stats.balance >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}{allRecords.filter(r => r.status === 'paid').length} records
                                         </span>
                                     </div>
                                 </div>
