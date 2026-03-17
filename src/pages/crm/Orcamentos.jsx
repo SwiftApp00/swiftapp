@@ -36,6 +36,11 @@ export function Orcamentos() {
     const [savedQuoteData, setSavedQuoteData] = useState(null);
     const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+    // Receipt email confirmation
+    const [showReceiptEmailConfirm, setShowReceiptEmailConfirm] = useState(false);
+    const [receiptQuoteData, setReceiptQuoteData] = useState(null);
+    const [isSendingReceiptEmail, setIsSendingReceiptEmail] = useState(false);
+
     // Detail view
     const [selectedQuote, setSelectedQuote] = useState(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -97,11 +102,21 @@ export function Orcamentos() {
             // Update finance status when quote is completed
             await supabase.from('finance').update({ status: 'paid' }).eq('quote_id', id);
 
-            // Generate Receipt PDF
+            const { error } = await supabase.from('quotes').update({ status: 'completed' }).eq('id', id);
+            if (!error) {
+                await logAction('UPDATE_STATUS', 'Quotes', { quote_id: id, new_status: 'completed' });
+                await fetchQuotes();
+            }
+
+            // Generate Receipt PDF immediately (download)
             const quote = quotes.find(q => q.id === id);
             if (quote) {
                 generateReceiptPDF(quote, quote.clients);
+                // Show receipt email confirmation dialog
+                setReceiptQuoteData(quote);
+                setShowReceiptEmailConfirm(true);
             }
+            return;
         }
 
         const { error } = await supabase.from('quotes').update({ status: status }).eq('id', id);
@@ -384,6 +399,57 @@ export function Orcamentos() {
             alert('Error sending email: ' + (err.message || 'Unknown'));
         } finally {
             setIsSendingEmail(false);
+        }
+    };
+
+    const handleSendReceiptEmail = async () => {
+        if (!receiptQuoteData) return;
+        setIsSendingReceiptEmail(true);
+
+        try {
+            const client = receiptQuoteData.clients;
+            if (!client?.email) {
+                alert('Client has no email address.');
+                return;
+            }
+
+            // Generate Receipt PDF as base64
+            const pdfBase64 = generateReceiptPDF(receiptQuoteData, client, { returnBase64: true });
+            const receiptNumber = receiptQuoteData.quote_number?.replace('QT', 'REC') || 'REC-XXXX';
+
+            // Call edge function to send email
+            const { error } = await supabase.functions.invoke('send-service-request-emails', {
+                body: {
+                    type: 'receipt',
+                    client_name: client.name,
+                    client_email: client.email,
+                    quote_number: receiptNumber,
+                    total: receiptQuoteData.total,
+                    pdf_base64: pdfBase64,
+                }
+            });
+
+            if (error) console.error('Receipt email send error:', error);
+
+            // Log the email send
+            const now = new Date().toISOString();
+            const emailLogs = [...(receiptQuoteData.email_logs || []), {
+                sent_at: now,
+                recipient: client.email,
+                type: 'receipt_pdf',
+            }];
+
+            await supabase.from('quotes').update({ email_logs: emailLogs }).eq('id', receiptQuoteData.id);
+
+            alert('Receipt sent successfully!');
+            setShowReceiptEmailConfirm(false);
+            setReceiptQuoteData(null);
+            fetchQuotes();
+        } catch (err) {
+            console.error('Receipt email error:', err);
+            alert('Error sending receipt: ' + (err.message || 'Unknown'));
+        } finally {
+            setIsSendingReceiptEmail(false);
         }
     };
 
@@ -687,6 +753,34 @@ export function Orcamentos() {
                             >
                                 {isSendingEmail ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2" />}
                                 {isSendingEmail ? 'Sending...' : 'Yes, Send'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Receipt Email Confirmation Dialog */}
+            <Modal isOpen={showReceiptEmailConfirm} onClose={() => { setShowReceiptEmailConfirm(false); setReceiptQuoteData(null); }} title="Send Receipt to Client?">
+                {receiptQuoteData && (
+                    <div className="space-y-4 text-center">
+                        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+                            <CheckCircle size={28} className="text-green-600" />
+                        </div>
+                        <p className="text-sm text-gray-600">
+                            Service completed! Would you like to send the receipt <strong>{receiptQuoteData.quote_number?.replace('QT', 'REC')}</strong> to <strong>{receiptQuoteData.clients?.email || 'client'}</strong>?
+                        </p>
+                        <p className="text-xs text-gray-400">The receipt PDF will be sent as an email attachment.</p>
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => { setShowReceiptEmailConfirm(false); setReceiptQuoteData(null); }}>
+                                No, Skip
+                            </Button>
+                            <Button
+                                className="flex-1 bg-green-700 hover:bg-green-800"
+                                onClick={handleSendReceiptEmail}
+                                disabled={isSendingReceiptEmail}
+                            >
+                                {isSendingReceiptEmail ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2" />}
+                                {isSendingReceiptEmail ? 'Sending...' : 'Yes, Send Receipt'}
                             </Button>
                         </div>
                     </div>

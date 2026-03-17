@@ -196,7 +196,7 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
  * @param {Object} quoteData - The quote information
  * @param {Object} clientData - The client information
  */
-export const generateReceiptPDF = (quoteData, clientData) => {
+export const generateReceiptPDF = (quoteData, clientData, options = {}) => {
     const doc = new jsPDF();
     const BRAND_COLOR = [139, 0, 0]; // Dark Red #8B0000
     const LIGHT_GRAY = [245, 245, 245];
@@ -284,13 +284,13 @@ export const generateReceiptPDF = (quoteData, clientData) => {
     doc.setFontSize(11);
     doc.setTextColor(40, 40, 40);
     doc.setFont("helvetica", "bold");
-    doc.text("Observações:", 20, finalY + 25);
+    doc.text("Notes:", 20, finalY + 25);
     doc.setFont("helvetica", "normal");
     
-    const message = `Confirmamos o recebimento do valor pago (€${Number(total).toFixed(2)}), nada tendo a reclamar. Confirmamos também a execução dos serviços descritos neste recibo. Swift Transport & Solutions sempre estará a disposição para eventuais esclarecimentos e possíveis novos negócios.`;
+    const message = `We hereby confirm receipt of the payment of €${Number(total).toFixed(2)}, with no outstanding claims. We also confirm the completion of all services described in this receipt. Swift Transport & Solutions remains at your disposal for any inquiries and future business opportunities.`;
     
     const splitText = doc.splitTextToSize(message, 170);
-    doc.text(splitText, 20, finalY + 32);
+    doc.text(splitText, 20, finalY + 32, { align: 'justify', maxWidth: 170 });
 
     // Footer
     const pageHeight = doc.internal.pageSize.height;
@@ -302,5 +302,10 @@ export const generateReceiptPDF = (quoteData, clientData) => {
     doc.setFontSize(11);
     doc.text("Thank you for choosing Swift Transport & Solutions", 105, pageHeight - 5, { align: "center" });
 
-    doc.save(`Receipt_${quoteData.quote_number?.replace('QT', 'REC') || 'Draft'}.pdf`);
+    // Download or Return
+    if (options.returnBase64) {
+        return doc.output('datauristring').split(',')[1];
+    } else {
+        doc.save(`Receipt_${quoteData.quote_number?.replace('QT', 'REC') || 'Draft'}.pdf`);
+    }
 };
