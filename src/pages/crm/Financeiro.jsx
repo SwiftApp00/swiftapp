@@ -70,21 +70,36 @@ export function Financeiro() {
 
     // Status logic: overdue if past due_date and not paid
     const getDisplayStatus = (record) => {
-        if (record.status === 'paid') return 'paid';
+        if (record.status === 'paid') {
+            return record.type === 'receivable' ? 'payment_received' : 'paid';
+        }
         if (record.due_date && new Date(record.due_date) < new Date()) return 'overdue';
+        if (record.status === 'pending') {
+            return record.type === 'receivable' ? 'awaiting_payment' : 'pending';
+        }
         return record.status || 'open';
     };
 
     const statusBadge = (status) => {
         const styles = {
+            payment_received: 'bg-green-100 text-green-700',
             paid: 'bg-green-100 text-green-700',
             open: 'bg-blue-100 text-blue-700',
             pending: 'bg-yellow-100 text-yellow-700',
+            awaiting_payment: 'bg-yellow-100 text-yellow-700',
             overdue: 'bg-red-100 text-red-700'
+        };
+        const labels = {
+            payment_received: 'Pagamento Recebido',
+            paid: 'Paid',
+            open: 'Open',
+            pending: 'Pending',
+            awaiting_payment: 'Aguardando Pagamento',
+            overdue: 'Overdue'
         };
         return (
             <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${styles[status] || styles.pending}`}>
-                {status}
+                {labels[status] || status}
             </span>
         );
     };
@@ -227,6 +242,8 @@ export function Financeiro() {
                 (r.description || r.quotes?.description || '-').substring(0, 40),
                 Number(r.amount || 0).toFixed(2),
                 r.due_date ? new Date(r.due_date).toLocaleDateString('en-GB') : '-',
+                getDisplayStatus(r) === 'payment_received' ? 'PAGAMENTO RECEBIDO' :
+                getDisplayStatus(r) === 'awaiting_payment' ? 'AGUARDANDO PAGAMENTO' :
                 getDisplayStatus(r).toUpperCase()
             ]),
             headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
@@ -325,6 +342,8 @@ export function Financeiro() {
                     <option value="">All</option>
                     <option value="open">Open</option>
                     <option value="paid">Paid</option>
+                    <option value="payment_received">Pagamento Recebido</option>
+                    <option value="awaiting_payment">Aguardando Pagamento</option>
                     <option value="overdue">Overdue</option>
                     <option value="pending">Pending</option>
                 </select>
@@ -501,8 +520,8 @@ export function Financeiro() {
                                     actions={(row) => (
                                         <div className="flex gap-1">
                                             <button onClick={(e) => { e.stopPropagation(); openView(row); }} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="View"><Eye size={16} /></button>
-                                            {getDisplayStatus(row) !== 'paid' && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleMarkPaid(row.id); }} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors" title="Mark Paid"><Check size={16} /></button>
+                                            {getDisplayStatus(row) !== 'payment_received' && (
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkPaid(row.id); }} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors" title="Marcar como Recebido"><Check size={16} /></button>
                                             )}
                                             <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id, row.finance_number); }} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
                                         </div>
