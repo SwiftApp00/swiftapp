@@ -90,11 +90,11 @@ export function Financeiro() {
             overdue: 'bg-red-100 text-red-700'
         };
         const labels = {
-            payment_received: 'Pagamento Recebido',
+            payment_received: 'Payment Received',
             paid: 'Paid',
             open: 'Open',
             pending: 'Pending',
-            awaiting_payment: 'Aguardando Pagamento',
+            awaiting_payment: 'Awaiting Payment',
             overdue: 'Overdue'
         };
         return (
@@ -242,8 +242,8 @@ export function Financeiro() {
                 (r.description || r.quotes?.description || '-').substring(0, 40),
                 Number(r.amount || 0).toFixed(2),
                 r.due_date ? new Date(r.due_date).toLocaleDateString('en-GB') : '-',
-                getDisplayStatus(r) === 'payment_received' ? 'PAGAMENTO RECEBIDO' :
-                getDisplayStatus(r) === 'awaiting_payment' ? 'AGUARDANDO PAGAMENTO' :
+                getDisplayStatus(r) === 'payment_received' ? 'PAYMENT RECEIVED' :
+                getDisplayStatus(r) === 'awaiting_payment' ? 'AWAITING PAYMENT' :
                 getDisplayStatus(r).toUpperCase()
             ]),
             headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
@@ -342,8 +342,8 @@ export function Financeiro() {
                     <option value="">All</option>
                     <option value="open">Open</option>
                     <option value="paid">Paid</option>
-                    <option value="payment_received">Pagamento Recebido</option>
-                    <option value="awaiting_payment">Aguardando Pagamento</option>
+                    <option value="payment_received">Payment Received</option>
+                    <option value="awaiting_payment">Awaiting Payment</option>
                     <option value="overdue">Overdue</option>
                     <option value="pending">Pending</option>
                 </select>
@@ -521,7 +521,7 @@ export function Financeiro() {
                                         <div className="flex gap-1">
                                             <button onClick={(e) => { e.stopPropagation(); openView(row); }} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="View"><Eye size={16} /></button>
                                             {getDisplayStatus(row) !== 'payment_received' && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleMarkPaid(row.id); }} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors" title="Marcar como Recebido"><Check size={16} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkPaid(row.id); }} className="p-1.5 text-gray-400 hover:text-green-600 transition-colors" title="Mark Paid"><Check size={16} /></button>
                                             )}
                                             <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id, row.finance_number); }} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
                                         </div>
