@@ -117,21 +117,28 @@ export function Configuracoes() {
         e.preventDefault();
         setIsCreatingUser(true);
         try {
-            // Note: Since we are on client-side and usually don't have service_role,
-            // we'd use an Edge Function for this. But for now, we'll try to insert into profiles
-            // or provide instructions. Actually, Supabase public signUp won't work for admin creating others.
-            // I'll simulate a request to a non-existent edge function or just show a message.
-            // FOR NOW: I'll inform that invitations are handled via Edge Function or Admin Dashboard.
+            const { data, error } = await supabase.functions.invoke('invite-user', {
+                body: { 
+                    email: userForm.email, 
+                    full_name: userForm.full_name, 
+                    role: userForm.role 
+                }
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            // Log the success
+            await logAction('INVITE_USER_SUCCESS', 'Settings', { target_email: userForm.email, role: userForm.role });
             
-            alert('User invitation feature requires an Administrative Edge Function. This implementation provides the UI placeholder for integrated user management.');
-            
-            // Log the attempt
-            await logAction('INVITE_USER_ATTEMPT', 'Settings', { target_email: userForm.email });
-            
+            alert('User invited successfully!');
+            fetchProfiles();
             setIsUserModalOpen(false);
             setUserForm({ email: '', full_name: '', role: 'user' });
         } catch (err) {
             console.error(err);
+            alert(`Error inviting user: ${err.message}`);
+            await logAction('INVITE_USER_ERROR', 'Settings', { target_email: userForm.email, error: err.message });
         } finally {
             setIsCreatingUser(false);
         }
