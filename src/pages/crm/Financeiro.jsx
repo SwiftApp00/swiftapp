@@ -270,7 +270,9 @@ export function Financeiro() {
         const totalPayable = payables.reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const balance = totalReceivable - totalPayable;
         const paidAll = allRecords.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount || 0), 0);
-        const pendingAll = allRecords.filter(r => r.status !== 'paid').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const awaitingPaymentAll = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const pendingAll = allRecords.filter(r => r.status !== 'paid' && !(r.status === 'pending' && r.type === 'receivable')).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const awaitingPaymentCount = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -286,7 +288,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, pendingAll, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, monthlyData, receivables, payables };
     }, [allRecords]);
 
     // Columns for tables
@@ -371,16 +373,18 @@ export function Financeiro() {
         );
     };
 
-    const DonutChart = ({ paid, pending, total }) => {
+    const DonutChart = ({ paid, awaiting, pending, total }) => {
         const circumference = 2 * Math.PI * 54;
         const paidDash = total > 0 ? (paid / total) * circumference : 0;
+        const awaitingDash = total > 0 ? (awaiting / total) * circumference : 0;
         const pendingDash = total > 0 ? (pending / total) * circumference : 0;
         return (
             <div className="relative flex items-center justify-center">
                 <svg width="140" height="140" viewBox="0 0 120 120" className="transform -rotate-90">
                     <circle cx="60" cy="60" r="54" fill="none" stroke="#f3f4f6" strokeWidth="12" />
                     <circle cx="60" cy="60" r="54" fill="none" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${paidDash} ${circumference}`} strokeLinecap="round" />
-                    <circle cx="60" cy="60" r="54" fill="none" stroke="#ca8a04" strokeWidth="12" strokeDasharray={`${pendingDash} ${circumference}`} strokeDashoffset={-paidDash} strokeLinecap="round" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#eab308" strokeWidth="12" strokeDasharray={`${awaitingDash} ${circumference}`} strokeDashoffset={-paidDash} strokeLinecap="round" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#ea580c" strokeWidth="12" strokeDasharray={`${pendingDash} ${circumference}`} strokeDashoffset={-(paidDash + awaitingDash)} strokeLinecap="round" />
                 </svg>
                 <div className="absolute flex flex-col items-center">
                     <span className="text-lg font-bold text-gray-800">€{total.toFixed(0)}</span>
@@ -425,7 +429,7 @@ export function Financeiro() {
                     {/* Dashboard */}
                     {activeView === 'dashboard' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -436,6 +440,16 @@ export function Financeiro() {
                                             </span>
                                         </div>
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}><Wallet size={22} className="text-green-600" /></div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Awaiting Payment</p>
+                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.awaitingPaymentAll.toFixed(2)}</p>
+                                            <span className="flex items-center gap-0.5 text-xs font-bold text-yellow-600 mt-2"><ArrowUpRight size={14} />{stats.awaitingPaymentCount} transactions</span>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fefce8, #fef08a)' }}><CircleDollarSign size={22} className="text-yellow-600" /></div>
                                     </div>
                                 </div>
                                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -473,10 +487,11 @@ export function Financeiro() {
                                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                                     <div className="flex items-center gap-2 mb-4"><PieChart size={20} className="text-gray-500" /><h3 className="text-lg font-bold text-gray-900">Payment Status</h3></div>
                                     <div className="flex flex-col items-center gap-4">
-                                        <DonutChart paid={stats.paidAll} pending={stats.pendingAll} total={stats.paidAll + stats.pendingAll} />
+                                        <DonutChart paid={stats.paidAll} awaiting={stats.awaitingPaymentAll} pending={stats.pendingAll} total={stats.paidAll + stats.awaitingPaymentAll + stats.pendingAll} />
                                         <div className="w-full space-y-3 px-2">
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-sm text-gray-600">Paid</span></div><span className="text-sm font-bold text-gray-800">€{stats.paidAll.toFixed(2)}</span></div>
-                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-600" /><span className="text-sm text-gray-600">Pending/Open</span></div><span className="text-sm font-bold text-gray-800">€{stats.pendingAll.toFixed(2)}</span></div>
+                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-500" /><span className="text-sm text-gray-600">Awaiting Payment</span></div><span className="text-sm font-bold text-gray-800">€{stats.awaitingPaymentAll.toFixed(2)}</span></div>
+                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-600" /><span className="text-sm text-gray-600">Pending/Open</span></div><span className="text-sm font-bold text-gray-800">€{stats.pendingAll.toFixed(2)}</span></div>
                                         </div>
                                     </div>
                                 </div>
