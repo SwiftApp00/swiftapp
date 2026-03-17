@@ -431,19 +431,7 @@ export function Financeiro() {
                     {/* Dashboard */}
                     {activeView === 'dashboard' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Available Balance</p>
-                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.balance.toFixed(2)}</p>
-                                            <span className={`flex items-center gap-0.5 text-xs font-bold mt-2 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {stats.balance >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{allRecords.length} records
-                                            </span>
-                                        </div>
-                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}><Wallet size={22} className="text-green-600" /></div>
-                                    </div>
-                                </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -486,7 +474,17 @@ export function Financeiro() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-                                <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                                <div className="lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col justify-center">
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}><Wallet size={26} className="text-green-600" /></div>
+                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Available Balance</p>
+                                        <p className="text-3xl font-bold text-gray-900">€{stats.balance.toFixed(2)}</p>
+                                        <span className={`flex items-center gap-1 text-sm font-bold mt-4 ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {stats.balance >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}{allRecords.length} records
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-2"><BarChart3 size={20} className="text-gray-500" /><h3 className="text-lg font-bold text-gray-900">Cashflow</h3></div>
                                         <div className="flex items-center gap-4 text-xs font-medium">
