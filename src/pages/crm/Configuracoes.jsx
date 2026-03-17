@@ -31,7 +31,7 @@ export function Configuracoes() {
 
     // User Management state
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-    const [userForm, setUserForm] = useState({ email: '', full_name: '', role: 'user' });
+    const [userForm, setUserForm] = useState({ email: '', full_name: '', role: 'user', password: '' });
     const [isCreatingUser, setIsCreatingUser] = useState(false);
 
     useEffect(() => {
@@ -121,7 +121,8 @@ export function Configuracoes() {
                 body: { 
                     email: userForm.email, 
                     full_name: userForm.full_name, 
-                    role: userForm.role 
+                    role: userForm.role,
+                    password: userForm.password 
                 }
             });
 
@@ -129,16 +130,16 @@ export function Configuracoes() {
             if (data?.error) throw new Error(data.error);
 
             // Log the success
-            await logAction('INVITE_USER_SUCCESS', 'Settings', { target_email: userForm.email, role: userForm.role });
+            await logAction('CREATE_USER_SUCCESS', 'Settings', { target_email: userForm.email, role: userForm.role });
             
-            alert('User invited successfully!');
+            alert('User created successfully! They can now log in with the provided email and password.');
             fetchProfiles();
             setIsUserModalOpen(false);
-            setUserForm({ email: '', full_name: '', role: 'user' });
+            setUserForm({ email: '', full_name: '', role: 'user', password: '' });
         } catch (err) {
             console.error(err);
             alert(`Error inviting user: ${err.message}`);
-            await logAction('INVITE_USER_ERROR', 'Settings', { target_email: userForm.email, error: err.message });
+            await logAction('CREATE_USER_ERROR', 'Settings', { target_email: userForm.email, error: err.message });
         } finally {
             setIsCreatingUser(false);
         }
@@ -234,7 +235,7 @@ export function Configuracoes() {
                         <div className="flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-900">System Users</h3>
                             <Button size="sm" onClick={() => setIsUserModalOpen(true)}>
-                                <UserPlus size={16} className="mr-2" /> Invite User
+                                <UserPlus size={16} className="mr-2" /> Create User
                             </Button>
                         </div>
                         {loading ? (
@@ -304,11 +305,11 @@ export function Configuracoes() {
                 )}
             </div>
 
-            {/* Invite User Modal */}
+            {/* Create User Modal */}
             <Modal
                 isOpen={isUserModalOpen}
                 onClose={() => setIsUserModalOpen(false)}
-                title="Invite New User"
+                title="Create New User"
             >
                 <form onSubmit={handleCreateUser} className="space-y-4">
                     <Input 
@@ -336,14 +337,22 @@ export function Configuracoes() {
                         <option value="user">Standard User (CRM Access)</option>
                         <option value="admin">Administrator (Settings Access)</option>
                     </Input>
+                    <Input 
+                        label="Password"
+                        type="password"
+                        placeholder="Minimum 6 characters"
+                        required
+                        value={userForm.password}
+                        onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+                    />
 
                     <div className="pt-2 flex flex-col gap-2">
                         <Button type="submit" className="w-full" disabled={isCreatingUser}>
                             {isCreatingUser ? <Loader2 className="animate-spin mr-2" /> : <UserPlus size={16} className="mr-2" />}
-                            Create Profile & Grant Access
+                            Create User & Grant Access
                         </Button>
                         <p className="text-[10px] text-gray-400 text-center px-4 italic">
-                            New users will be added to the profiles table. They must sign up using this email at the login page to activate their account.
+                            The user will be created with immediate access. Share the email and password with them to log in.
                         </p>
                     </div>
                 </form>
