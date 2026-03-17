@@ -371,41 +371,7 @@ export function Financeiro() {
         );
     };
 
-    // Create/Edit Form Modal Content
-    const FormFields = ({ onSubmit, isEdit = false }) => (
-        <form onSubmit={onSubmit} className="space-y-4">
-            <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Category *</label>
-                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                    required className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]">
-                    <option value="">Select a category...</option>
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option value="__custom__">+ New category</option>
-                </select>
-            </div>
-            {form.category === '__custom__' && (
-                <Input label="New Category Name" placeholder="e.g. Fuel, Insurance, Maintenance..."
-                    required value={form.customCategory} onChange={e => setForm({ ...form, customCategory: e.target.value })} />
-            )}
-            <Input label="Description *" placeholder="Describe the expense..." required
-                value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-            <div className="grid grid-cols-2 gap-4">
-                <Input label="Amount (€) *" type="number" step="0.01" min="0" placeholder="0.00" required
-                    value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Due Date</label>
-                    <input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })}
-                        className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]" />
-                </div>
-            </div>
-            <div className="pt-2">
-                <Button type="submit" className="w-full" disabled={isSaving}>
-                    {isSaving ? <Loader2 className="animate-spin mr-2" size={16} /> : (isEdit ? <Edit3 size={16} className="mr-2" /> : <Plus size={16} className="mr-2" />)}
-                    {isEdit ? 'Save Changes' : 'Create Account Payable'}
-                </Button>
-            </div>
-        </form>
-    );
+
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -582,12 +548,74 @@ export function Financeiro() {
 
             {/* Create Modal */}
             <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="New Account Payable">
-                <FormFields onSubmit={handleCreate} />
+                <form onSubmit={handleCreate} className="space-y-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Category *</label>
+                        <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                            required className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]">
+                            <option value="">Select a category...</option>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            <option value="__custom__">+ New category</option>
+                        </select>
+                    </div>
+                    {form.category === '__custom__' && (
+                        <Input label="New Category Name" placeholder="e.g. Fuel, Insurance, Maintenance..."
+                            required value={form.customCategory} onChange={e => setForm({ ...form, customCategory: e.target.value })} />
+                    )}
+                    <Input label="Description *" placeholder="Describe the expense..." required
+                        value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Amount (€) *" type="number" step="0.01" min="0" placeholder="0.00" required
+                            value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Due Date</label>
+                            <input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })}
+                                className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]" />
+                        </div>
+                    </div>
+                    <div className="pt-2">
+                        <Button type="submit" className="w-full" disabled={isSaving}>
+                            {isSaving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Plus size={16} className="mr-2" />}
+                            Create Account Payable
+                        </Button>
+                    </div>
+                </form>
             </Modal>
 
             {/* Edit Modal */}
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit ${selectedRecord?.finance_number || ''}`}>
-                <FormFields onSubmit={handleUpdate} isEdit />
+                <form onSubmit={handleUpdate} className="space-y-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Category *</label>
+                        <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                            required className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]">
+                            <option value="">Select a category...</option>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            <option value="__custom__">+ New category</option>
+                        </select>
+                    </div>
+                    {form.category === '__custom__' && (
+                        <Input label="New Category Name" placeholder="e.g. Fuel, Insurance, Maintenance..."
+                            required value={form.customCategory} onChange={e => setForm({ ...form, customCategory: e.target.value })} />
+                    )}
+                    <Input label="Description *" placeholder="Describe the expense..." required
+                        value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Amount (€) *" type="number" step="0.01" min="0" placeholder="0.00" required
+                            value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Due Date</label>
+                            <input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })}
+                                className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]/20 focus:border-[#8B0000]" />
+                        </div>
+                    </div>
+                    <div className="pt-2">
+                        <Button type="submit" className="w-full" disabled={isSaving}>
+                            {isSaving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Edit3 size={16} className="mr-2" />}
+                            Save Changes
+                        </Button>
+                    </div>
+                </form>
             </Modal>
 
             {/* View Modal */}
