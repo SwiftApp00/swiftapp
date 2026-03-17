@@ -130,7 +130,7 @@ export function Configuracoes() {
             if (data?.error) throw new Error(data.error);
 
             // Log the success
-            await logAction('CREATE_USER_SUCCESS', 'Settings', { target_email: userForm.email, role: userForm.role });
+            await logAction('CREATE_USER_SUCCESS', 'Settings', { target_name: userForm.full_name, target_email: userForm.email, role: userForm.role });
             
             alert('User created successfully! They can now log in with the provided email and password.');
             fetchProfiles();
@@ -138,8 +138,8 @@ export function Configuracoes() {
             setUserForm({ email: '', full_name: '', role: 'user', password: '' });
         } catch (err) {
             console.error(err);
-            alert(`Error inviting user: ${err.message}`);
-            await logAction('CREATE_USER_ERROR', 'Settings', { target_email: userForm.email, error: err.message });
+            alert(`Error creating user: ${err.message}`);
+            await logAction('CREATE_USER_ERROR', 'Settings', { target_name: userForm.full_name, target_email: userForm.email, error: err.message });
         } finally {
             setIsCreatingUser(false);
         }

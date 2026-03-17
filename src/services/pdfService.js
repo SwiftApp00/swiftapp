@@ -50,12 +50,10 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
 
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
-        doc.text("Address: 138 W Broad, Bresseth, RZ", 20, 68);
-        doc.text("Phone: +070 3867727", 20, 73);
-        doc.text("Email: info@swifttransport.ie", 20, 78);
+        doc.text("Phone: 083 375 8839", 20, 70);
+        doc.text("E-mail: contactswifttransport@gmail.com", 20, 76);
 
-        doc.text("Company registration Nr. 2102000", 190, 68, { align: "right" });
-        doc.text("VAT Registration Nr.: 201200000", 190, 73, { align: "right" });
+        doc.text("Company Registration Nr. 755777", 190, 73, { align: "right" });
     };
 
     // Helper to sanitize emojis and unsupported Unicode for jsPDF
@@ -179,7 +177,7 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
-    doc.text("www.transport.com      @swifttransport      @swifttransport", 105, pageHeight - 12, { align: "center" });
+    doc.text("Site: www.swifttransport.ie      Instagram: @_swifttranport", 105, pageHeight - 12, { align: "center" });
     doc.setFontSize(11);
     doc.text("Thank you for choosing Swift Transport & Solutions", 105, pageHeight - 5, { align: "center" });
 
@@ -227,12 +225,10 @@ export const generateReceiptPDF = (quoteData, clientData) => {
 
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
-        doc.text("Address: 138 W Broad, Bresseth, RZ", 20, 68);
-        doc.text("Phone: +070 3867727", 20, 73);
-        doc.text("Email: info@swifttransport.ie", 20, 78);
+        doc.text("Phone: 083 375 8839", 20, 70);
+        doc.text("E-mail: contactswifttransport@gmail.com", 20, 76);
 
-        doc.text("Company registration Nr. 2102000", 190, 68, { align: "right" });
-        doc.text("VAT Registration Nr.: 201200000", 190, 73, { align: "right" });
+        doc.text("Company Registration Nr. 755777", 190, 73, { align: "right" });
     };
 
     const sanitizePdfText = (str) => {
@@ -302,7 +298,7 @@ export const generateReceiptPDF = (quoteData, clientData) => {
     doc.rect(0, pageHeight - 25, 210, 25, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
-    doc.text("www.transport.com      @swifttransport      @swifttransport", 105, pageHeight - 12, { align: "center" });
+    doc.text("Site: www.swifttransport.ie      Instagram: @_swifttranport", 105, pageHeight - 12, { align: "center" });
     doc.setFontSize(11);
     doc.text("Thank you for choosing Swift Transport & Solutions", 105, pageHeight - 5, { align: "center" });
 
