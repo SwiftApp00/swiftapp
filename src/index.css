@@ -84,6 +84,16 @@ body {
   color: #1a1a1a;
 }
 
+/* Date & Time input picker icons */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  filter: invert(20%) sepia(10%) saturate(500%) hue-rotate(180deg);
+}
+
 /* Light defaults */
 @media (prefers-color-scheme: light) {
   :root {
