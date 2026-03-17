@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { 
     Trash2, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
     Wallet, BarChart3, RefreshCw, PieChart, CircleDollarSign, Receipt,
-    Plus, Eye, Edit3, Check, X, Download, Filter, Calendar, Tag, Loader2
+    Plus, Eye, Edit3, Check, CheckCircle, X, Download, Filter, Calendar, Tag, Loader2
 } from 'lucide-react';
 import { logAction } from '../../services/auditLogger';
 import { jsPDF } from 'jspdf';
