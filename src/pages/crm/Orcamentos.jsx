@@ -509,10 +509,18 @@ export function Orcamentos() {
                             <Button size="sm" variant="outline" title="Edit" onClick={() => openEdit(row)}>
                                 <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" title="Download PDF" onClick={() => generateQuotePDF(row, row.clients)}>
+                            <Button size="sm" variant="outline" title={row.status === 'completed' ? "Download Receipt" : "Download PDF"} onClick={() => row.status === 'completed' ? generateReceiptPDF(row, row.clients) : generateQuotePDF(row, row.clients)}>
                                 <Download className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" title="Send Email" onClick={() => { setSavedQuoteData(row); setShowEmailConfirm(true); }}>
+                            <Button size="sm" variant="outline" title="Send Email" onClick={() => { 
+                                if (row.status === 'completed') {
+                                    setReceiptQuoteData(row); 
+                                    setShowReceiptEmailConfirm(true);
+                                } else {
+                                    setSavedQuoteData(row); 
+                                    setShowEmailConfirm(true); 
+                                }
+                            }}>
                                 <Mail className="h-4 w-4" />
                             </Button>
                             <Button
