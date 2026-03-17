@@ -275,6 +275,8 @@ export function Financeiro() {
         const awaitingPaymentCount = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').length;
         const paidPayableAll = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const paidPayableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').length;
+        const pendingPayableAll = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -290,7 +292,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, monthlyData, receivables, payables };
     }, [allRecords]);
 
     // Columns for tables
@@ -458,8 +460,8 @@ export function Financeiro() {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Outflows (Payable)</p>
-                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.totalPayable.toFixed(2)}</p>
-                                            <span className="flex items-center gap-0.5 text-xs font-bold text-red-600 mt-2"><ArrowDownRight size={14} />{stats.payables.length} transactions</span>
+                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.pendingPayableAll.toFixed(2)}</p>
+                                            <span className="flex items-center gap-0.5 text-xs font-bold text-red-600 mt-2"><ArrowDownRight size={14} />{stats.pendingPayableCount} transactions</span>
                                         </div>
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fef2f2, #fecaca)' }}><TrendingDown size={22} className="text-red-600" /></div>
                                     </div>
