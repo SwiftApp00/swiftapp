@@ -455,7 +455,7 @@ export function Financeiro() {
                                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Inflows (Receivable)</p>
+                                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Payment Received</p>
                                             <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.totalReceivable.toFixed(2)}</p>
                                             <span className="flex items-center gap-0.5 text-xs font-bold text-green-600 mt-2"><ArrowUpRight size={14} />{stats.receivables.length} transactions</span>
                                         </div>
@@ -489,7 +489,7 @@ export function Financeiro() {
                                     <div className="flex flex-col items-center gap-4">
                                         <DonutChart paid={stats.paidAll} awaiting={stats.awaitingPaymentAll} pending={stats.pendingAll} total={stats.paidAll + stats.awaitingPaymentAll + stats.pendingAll} />
                                         <div className="w-full space-y-3 px-2">
-                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-sm text-gray-600">Paid</span></div><span className="text-sm font-bold text-gray-800">€{stats.paidAll.toFixed(2)}</span></div>
+                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-sm text-gray-600">Payment Received</span></div><span className="text-sm font-bold text-gray-800">€{stats.paidAll.toFixed(2)}</span></div>
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-500" /><span className="text-sm text-gray-600">Awaiting Payment</span></div><span className="text-sm font-bold text-gray-800">€{stats.awaitingPaymentAll.toFixed(2)}</span></div>
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-600" /><span className="text-sm text-gray-600">Pending/Open</span></div><span className="text-sm font-bold text-gray-800">€{stats.pendingAll.toFixed(2)}</span></div>
                                         </div>
