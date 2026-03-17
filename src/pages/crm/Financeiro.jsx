@@ -273,6 +273,8 @@ export function Financeiro() {
         const awaitingPaymentAll = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const pendingAll = allRecords.filter(r => r.status !== 'paid' && !(r.status === 'pending' && r.type === 'receivable')).reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const awaitingPaymentCount = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').length;
+        const paidPayableAll = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const paidPayableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -288,7 +290,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, monthlyData, receivables, payables };
     }, [allRecords]);
 
     // Columns for tables
@@ -429,7 +431,7 @@ export function Financeiro() {
                     {/* Dashboard */}
                     {activeView === 'dashboard' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
                                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -470,6 +472,16 @@ export function Financeiro() {
                                             <span className="flex items-center gap-0.5 text-xs font-bold text-red-600 mt-2"><ArrowDownRight size={14} />{stats.payables.length} transactions</span>
                                         </div>
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fef2f2, #fecaca)' }}><TrendingDown size={22} className="text-red-600" /></div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Paid (Payable)</p>
+                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.paidPayableAll.toFixed(2)}</p>
+                                            <span className="flex items-center gap-0.5 text-xs font-bold text-red-500 mt-2"><ArrowDownRight size={14} />{stats.paidPayableCount} transactions</span>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fef2f2, #fca5a5)' }}><CheckCircle size={22} className="text-red-500" /></div>
                                     </div>
                                 </div>
                             </div>
