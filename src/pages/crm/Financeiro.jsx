@@ -271,13 +271,14 @@ export function Financeiro() {
         const balance = totalReceivable - totalPayable;
         const paidAll = allRecords.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const awaitingPaymentAll = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
-        const pendingAll = allRecords.filter(r => r.status !== 'paid' && !(r.status === 'pending' && r.type === 'receivable')).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const pendingAll = allRecords.filter(r => r.status !== 'paid' && !(r.status === 'pending' && r.type === 'receivable') && getDisplayStatus(r) !== 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const awaitingPaymentCount = allRecords.filter(r => r.status === 'pending' && r.type === 'receivable').length;
         const paidPayableAll = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const paidPayableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'payable').length;
-        const pendingPayableAll = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').reduce((sum, r) => sum + Number(r.amount || 0), 0);
-        const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable').length;
-        const overduePayableCount = allRecords.filter(r => getDisplayStatus(r) === 'overdue_payable').length;
+        const pendingPayableAll = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable' && getDisplayStatus(r) !== 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable' && getDisplayStatus(r) !== 'overdue').length;
+        const overdueAll = allRecords.filter(r => getDisplayStatus(r) === 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const overduePayableCount = allRecords.filter(r => getDisplayStatus(r) === 'overdue' && r.type === 'payable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -293,7 +294,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, overduePayableCount, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, overdueAll, overduePayableCount, monthlyData, receivables, payables };
     }, [allRecords]);
 
     // Columns for tables
@@ -378,12 +379,13 @@ export function Financeiro() {
         );
     };
 
-    const DonutChart = ({ paid, awaiting, pending, paidPayable, total }) => {
+    const DonutChart = ({ paid, awaiting, pending, paidPayable, overdue, total }) => {
         const circumference = 2 * Math.PI * 54;
         const paidDash = total > 0 ? (paid / total) * circumference : 0;
         const awaitingDash = total > 0 ? (awaiting / total) * circumference : 0;
         const pendingDash = total > 0 ? (pending / total) * circumference : 0;
         const paidPayableDash = total > 0 ? (paidPayable / total) * circumference : 0;
+        const overdueDash = total > 0 ? (overdue / total) * circumference : 0;
         return (
             <div className="relative flex items-center justify-center">
                 <svg width="140" height="140" viewBox="0 0 120 120" className="transform -rotate-90">
@@ -391,7 +393,8 @@ export function Financeiro() {
                     <circle cx="60" cy="60" r="54" fill="none" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${paidDash} ${circumference}`} strokeLinecap="round" />
                     <circle cx="60" cy="60" r="54" fill="none" stroke="#eab308" strokeWidth="12" strokeDasharray={`${awaitingDash} ${circumference}`} strokeDashoffset={-paidDash} strokeLinecap="round" />
                     <circle cx="60" cy="60" r="54" fill="none" stroke="#ea580c" strokeWidth="12" strokeDasharray={`${pendingDash} ${circumference}`} strokeDashoffset={-(paidDash + awaitingDash)} strokeLinecap="round" />
-                    <circle cx="60" cy="60" r="54" fill="none" stroke="#ef4444" strokeWidth="12" strokeDasharray={`${paidPayableDash} ${circumference}`} strokeDashoffset={-(paidDash + awaitingDash + pendingDash)} strokeLinecap="round" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#991b1b" strokeWidth="12" strokeDasharray={`${overdueDash} ${circumference}`} strokeDashoffset={-(paidDash + awaitingDash + pendingDash)} strokeLinecap="round" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#ef4444" strokeWidth="12" strokeDasharray={`${paidPayableDash} ${circumference}`} strokeDashoffset={-(paidDash + awaitingDash + pendingDash + overdueDash)} strokeLinecap="round" />
                 </svg>
                 <div className="absolute flex flex-col items-center">
                     <span className="text-lg font-bold text-gray-800">€{total.toFixed(0)}</span>
@@ -521,11 +524,12 @@ export function Financeiro() {
                                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                                     <div className="flex items-center gap-2 mb-4"><PieChart size={20} className="text-gray-500" /><h3 className="text-lg font-bold text-gray-900">Payment Status</h3></div>
                                     <div className="flex flex-col items-center gap-4">
-                                        <DonutChart paid={stats.paidAll} awaiting={stats.awaitingPaymentAll} pending={stats.pendingAll} paidPayable={stats.paidPayableAll} total={stats.paidAll + stats.awaitingPaymentAll + stats.pendingAll + stats.paidPayableAll} />
+                                        <DonutChart paid={stats.paidAll} awaiting={stats.awaitingPaymentAll} pending={stats.pendingAll} overdue={stats.overdueAll} paidPayable={stats.paidPayableAll} total={stats.paidAll + stats.awaitingPaymentAll + stats.pendingAll + stats.overdueAll + stats.paidPayableAll} />
                                         <div className="w-full space-y-3 px-2">
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-sm text-gray-600">Payment Received</span></div><span className="text-sm font-bold text-gray-800">€{stats.paidAll.toFixed(2)}</span></div>
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-500" /><span className="text-sm text-gray-600">Awaiting Payment</span></div><span className="text-sm font-bold text-gray-800">€{stats.awaitingPaymentAll.toFixed(2)}</span></div>
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-600" /><span className="text-sm text-gray-600">Pending/Open</span></div><span className="text-sm font-bold text-gray-800">€{stats.pendingAll.toFixed(2)}</span></div>
+                                            <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#991b1b]" /><span className="text-sm text-gray-600">Overdue</span></div><span className="text-sm font-bold text-gray-800">€{stats.overdueAll.toFixed(2)}</span></div>
                                             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-sm text-gray-600">Paid (Payable)</span></div><span className="text-sm font-bold text-gray-800">€{stats.paidPayableAll.toFixed(2)}</span></div>
                                         </div>
                                     </div>
