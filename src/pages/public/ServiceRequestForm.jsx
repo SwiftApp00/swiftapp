@@ -157,6 +157,7 @@ const initialForm = {
     needs_assembly: null, assembly_type: '',
     has_parking: null,
     preferred_date: '', preferred_time: '',
+    website: '', // Honeypot field
 };
 
 export function ServiceRequestForm() {
@@ -272,12 +273,29 @@ export function ServiceRequestForm() {
         }
     };
 
+    const [formStartTime] = useState(Date.now()); // Capture time on mount
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setValidationErrors({});
         setRateLimitError(null);
 
-        // 1. CSRF Verification
+        // 1. Honeypot check (Bots often fill all fields)
+        if (form.website) {
+            console.warn('Honeypot filled. Possible bot submission.');
+            // Silent fail or fake success to confuse the bot
+            setSubmitted(true); 
+            return;
+        }
+
+        // 2. Submission timing check (Humans take > 3-5 seconds)
+        if (Date.now() - formStartTime < 3000) {
+            console.warn('Form submitted too fast. Possible bot.');
+            setRateLimitError('Please wait a moment before submitting.');
+            return;
+        }
+
+        // 3. CSRF Verification
         if (!validateCsrfToken(csrfToken)) {
             alert('Security error: invalid session. Please refresh the page.');
             return;
@@ -677,6 +695,17 @@ export function ServiceRequestForm() {
                         </button>
                     </div>
                 )}
+                {/* Honeypot field - Invisible to humans, bait for bots */}
+                <div className="hidden" aria-hidden="true">
+                    <input 
+                        type="text" 
+                        name="website" 
+                        value={form.website} 
+                        onChange={(e) => set('website', e.target.value)} 
+                        tabIndex="-1" 
+                        autoComplete="off" 
+                    />
+                </div>
             </form>
         </div>
     );

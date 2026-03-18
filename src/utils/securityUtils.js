@@ -12,14 +12,26 @@
  */
 export const sanitizeInput = (str) => {
     if (str == null) return '';
-    return String(str)
-        .replace(/<[^>]*>/g, '')                         // Strip HTML tags
-        .replace(/javascript:/gi, '')                     // Remove javascript: protocol
-        .replace(/on\w+\s*=/gi, '')                       // Remove event handlers (onclick=, onerror=, etc.)
-        .replace(/data:\s*text\/html/gi, '')              // Block data:text/html
-        .replace(/['";]\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|EXEC|UNION|SELECT)\b/gi, '') // SQL patterns
-        .replace(/--/g, '')                               // SQL comment
-        .trim();
+    let sanitized = String(str);
+    
+    // Recursive removal of dangerous patterns
+    let prev;
+    do {
+        prev = sanitized;
+        sanitized = sanitized
+            .replace(/<[^>]*>/g, '')                         // Strip HTML tags
+            .replace(/javascript:/gi, '')                     // Remove javascript: protocol
+            .replace(/on\w+\s*=/gi, '')                       // Remove event handlers (onclick=, onerror=, etc.)
+            .replace(/data:\s*text\/html/gi, '')              // Block data:text/html
+            .replace(/['";]\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|EXEC|UNION|SELECT|TRUNCATE)\b/gi, '') // SQL patterns
+            .replace(/--/g, '')                               // SQL comment
+            .replace(/eval\s*\(/gi, '')                        // block eval()
+            .replace(/expression\s*\(/gi, '')                  // block CSS expression()
+            .replace(/url\s*\(/gi, '')                         // block url() in CSS
+            .trim();
+    } while (sanitized !== prev);
+
+    return sanitized;
 };
 
 /**
