@@ -118,20 +118,26 @@ export function Orcamentos() {
         }
 
         if (status === 'completed') {
-            // Update finance status when quote is completed
+            const quote = quotes.find(q => q.id === id);
+            
+            // 1. Update finance status
             await supabase.from('finance').update({ status: 'paid' }).eq('quote_id', id);
 
+            // 2. Update service request status if linked
+            if (quote?.request_id) {
+                await supabase.from('service_requests').update({ status: 'completed' }).eq('id', quote.request_id);
+            }
+
+            // 3. Update quote status
             const { error } = await supabase.from('quotes').update({ status: 'completed' }).eq('id', id);
             if (!error) {
                 await logAction('UPDATE_STATUS', 'Quotes', { quote_id: id, new_status: 'completed' });
                 await fetchQuotes();
             }
 
-            // Generate Receipt PDF immediately (download)
-            const quote = quotes.find(q => q.id === id);
+            // 4. Generate Receipt PDF & Show email confirm
             if (quote) {
                 generateReceiptPDF(quote, quote.clients);
-                // Show receipt email confirmation dialog
                 setReceiptQuoteData(quote);
                 setShowReceiptEmailConfirm(true);
             }

@@ -231,6 +231,7 @@ export function ServiceRequests() {
                     items: finalItems,
                     status: 'pending',
                     service_date: sr.preferred_date,
+                    request_id: sr.id,
                     subtotal,
                     discount_percent: Number(discountPercent) || 0,
                     discount_amount: discountAmt,

@@ -280,6 +280,7 @@ export function Financeiro() {
         const pendingPayableCount = allRecords.filter(r => r.status !== 'paid' && r.type === 'payable' && getDisplayStatus(r) !== 'overdue').length;
         const overdueAll = allRecords.filter(r => getDisplayStatus(r) === 'overdue').reduce((sum, r) => sum + Number(r.amount || 0), 0);
         const overduePayableCount = allRecords.filter(r => getDisplayStatus(r) === 'overdue' && r.type === 'payable').length;
+        const paidReceivableCount = allRecords.filter(r => r.status === 'paid' && r.type === 'receivable').length;
 
         const monthlyData = [];
         for (let i = 5; i >= 0; i--) {
@@ -295,7 +296,7 @@ export function Financeiro() {
             });
         }
 
-        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, overdueAll, overduePayableCount, monthlyData, receivables, payables };
+        return { totalReceivable, totalPayable, balance, paidAll, awaitingPaymentAll, pendingAll, awaitingPaymentCount, paidPayableAll, paidPayableCount, pendingPayableAll, pendingPayableCount, overdueAll, overduePayableCount, monthlyData, receivables, payables, paidReceivableCount };
     }, [allRecords]);
 
     // Columns for tables
@@ -455,8 +456,8 @@ export function Financeiro() {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Payment Received</p>
-                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.totalReceivable.toFixed(2)}</p>
-                                            <span className="flex items-center gap-0.5 text-xs font-bold text-green-600 mt-2"><ArrowUpRight size={14} />{stats.receivables.length} transactions</span>
+                                            <p className="text-2xl font-bold text-gray-900 mt-1">€{stats.paidAll.toFixed(2)}</p>
+                                            <span className="flex items-center gap-0.5 text-xs font-bold text-green-600 mt-2"><ArrowUpRight size={14} />{stats.paidReceivableCount} transactions</span>
                                         </div>
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #bbf7d0)' }}><TrendingUp size={22} className="text-green-600" /></div>
                                     </div>
