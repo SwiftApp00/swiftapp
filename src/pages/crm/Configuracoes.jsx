@@ -161,8 +161,16 @@ export function Configuracoes() {
                 }
             });
 
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
+            if (error) {
+                const errorDetail = error.message || 'Error executing Edge Function';
+                throw new Error(errorDetail);
+            }
+            
+            if (data?.error) {
+                // Se o diagnóstico estiver presente, anexa ao erro para debugar
+                const diag = data.diagnostic ? `\nDiag: ${JSON.stringify(data.diagnostic)}` : '';
+                throw new Error(data.error + diag);
+            }
 
             await logAction('DELETE_USER_SUCCESS', 'Settings', { target_name: user.full_name, target_email: user.email });
             alert('User deleted successfully.');
