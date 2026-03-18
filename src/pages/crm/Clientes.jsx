@@ -404,7 +404,7 @@ export function Clientes() {
 
     const handleGenerateQuote = (client) => {
         setIsViewModalOpen(false);
-        navigate('/orcamentos', { state: { newQuoteClientId: client.id } });
+        navigate('/crm/orcamentos', { state: { newQuoteClientId: client.id } });
     };
 
     const handleCloseModal = () => {
