@@ -5,8 +5,11 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { generateQuotePDF } from '../../services/pdfService';
-import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail, Trash2 } from 'lucide-react';
+import { ClipboardList, Eye, FileText, Loader2, MapPin, Truck, Wrench, ParkingCircle, Calendar, User, Package, Percent, Mail, Trash2, Search, RefreshCw } from 'lucide-react';
 import { logAction } from '../../services/auditLogger';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { sanitizePdfText } from '../../utils/pdfUtils';
 
 export function ServiceRequests() {
     const location = useLocation();
@@ -27,6 +30,11 @@ export function ServiceRequests() {
     const [quoteItems, setQuoteItems] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
     const [hasVat, setHasVat] = useState(true);
+
+    // Filters
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
+    const [filterSearch, setFilterSearch] = useState('');
 
     useEffect(() => { fetchRequests(); }, []);
 
@@ -304,6 +312,75 @@ export function ServiceRequests() {
             setIsSendingEmail(false);
         }
     };
+
+    const getFilteredRequests = () => {
+        let filtered = requests.filter(r => statusFilter === 'all' || r.status === statusFilter);
+        if (filterSearch) {
+            const s = filterSearch.toLowerCase();
+            filtered = filtered.filter(r => 
+                (r.client_name || '').toLowerCase().includes(s) || 
+                (r.client_email || '').toLowerCase().includes(s) ||
+                (r.service_type || '').toLowerCase().includes(s)
+            );
+        }
+        if (filterDateFrom) {
+            filtered = filtered.filter(r => new Date(r.created_at) >= new Date(filterDateFrom));
+        }
+        if (filterDateTo) {
+            filtered = filtered.filter(r => new Date(r.created_at) <= new Date(filterDateTo + 'T23:59:59'));
+        }
+        return filtered;
+    };
+
+    const exportPDF = () => {
+        const filtered = getFilteredRequests();
+        const doc = new jsPDF();
+        const BRAND = [139, 0, 0];
+
+        doc.setFillColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Swift Transport - Service Requests Report', 105, 13, { align: 'center' });
+
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 190, 28, { align: 'right' });
+
+        let filterText = '';
+        if (filterDateFrom || filterDateTo) filterText += `Date: ${filterDateFrom || '...'} to ${filterDateTo || '...'} `;
+        if (statusFilter !== 'all') filterText += `Status: ${statusFilter} `;
+        if (filterSearch) filterText += `Search: ${filterSearch} `;
+        if (filterText) doc.text(`Filters: ${filterText}`, 15, 28);
+
+        autoTable(doc, {
+            startY: 35,
+            head: [['#', 'Date', 'Client', 'Service', 'Pickup', 'Delivery', 'Status']],
+            body: filtered.map((r, i) => [
+                i + 1,
+                new Date(r.created_at).toLocaleDateString('en-GB'),
+                sanitizePdfText(r.client_name || '-'),
+                sanitizePdfText(getServiceLabel(r.service_type) || '-'),
+                sanitizePdfText(r.pickup_city || '-'),
+                sanitizePdfText(r.delivery_city || '-'),
+                (r.status || 'new').toUpperCase()
+            ]),
+            headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            margin: { left: 15, right: 15 },
+            styles: { fontSize: 8 }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        doc.setTextColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.text(`Total Requests: ${filtered.length}`, 15, finalY);
+        
+        doc.save(`Service_Requests_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const handleDelete = async (e, request) => {
         e.stopPropagation();
         if (!window.confirm(`Are you sure you want to permanently delete service request from "${request.client_name}"? This action cannot be undone.`)) return;
@@ -364,7 +441,53 @@ export function ServiceRequests() {
                     </h1>
                     <p className="text-sm text-gray-500">View and manage incoming service requests (Click row to view)</p>
                 </div>
-                <Button onClick={fetchRequests} variant="outline" size="sm">Refresh</Button>
+                <div className="flex gap-2">
+                    <Button onClick={exportPDF} variant="outline" className="flex items-center gap-2">
+                        <FileText size={18} /> Export PDF
+                    </Button>
+                    <Button onClick={fetchRequests} variant="outline" size="sm"><RefreshCw size={16} /></Button>
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="relative">
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search requests..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                            value={filterSearch}
+                            onChange={(e) => setFilterSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Calendar size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateFrom}
+                            onChange={(e) => setFilterDateFrom(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Calendar size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateTo}
+                            onChange={(e) => setFilterDateTo(e.target.value)}
+                        />
+                    </div>
+                    <Button 
+                        variant="outline" 
+                        onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterSearch(''); setStatusFilter('all'); }}
+                        className="text-gray-500 hover:text-red-600"
+                    >
+                        Clear Filters
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -408,7 +531,7 @@ export function ServiceRequests() {
             ) : (
                 <Table
                     columns={columns}
-                    data={requests.filter(r => statusFilter === 'all' || r.status === statusFilter)}
+                    data={getFilteredRequests()}
                     keyExtractor={(row) => row.id}
                     onRowClick={handleRowClick}
                     actions={(row) => (

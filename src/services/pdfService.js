@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { logoBase64 } from '../utils/logoBase64';
+import { sanitizePdfText } from '../utils/pdfUtils';
 
 /**
  * Generates a branded Quote PDF for Swift Transport & Solutions
@@ -56,11 +57,6 @@ export const generateQuotePDF = (quoteData, clientData, options = {}) => {
         doc.text("Company Registration Nr. 755777", 190, 73, { align: "right" });
     };
 
-    // Helper to sanitize emojis and unsupported Unicode for jsPDF
-    const sanitizePdfText = (str) => {
-        if (!str) return '';
-        return String(str).replace(/[^\x00-\xFF\u20AC\u2013\u2014\u2018\u2019\u201C\u201D\u2022]/g, '').trim();
-    };
 
     addBranding();
 
@@ -231,10 +227,6 @@ export const generateReceiptPDF = (quoteData, clientData, options = {}) => {
         doc.text("Company Registration Nr. 755777", 190, 73, { align: "right" });
     };
 
-    const sanitizePdfText = (str) => {
-        if (!str) return '';
-        return String(str).replace(/[^\x00-\xFF\u20AC\u2013\u2014\u2018\u2019\u201C\u201D\u2022]/g, '').trim();
-    };
 
     addBranding();
 

@@ -5,8 +5,11 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2, Eye, Edit3, Briefcase } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2, Eye, Edit3, Briefcase, RefreshCw, Calendar, Download } from 'lucide-react';
 import { logAction } from '../../services/auditLogger';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { sanitizePdfText } from '../../utils/pdfUtils';
 
 // Irish Eircode Routing Key → City / County mapping
 // The first 3 characters of an Eircode identify the area
@@ -161,6 +164,11 @@ export function Clientes() {
     const [editingClient, setEditingClient] = useState(null);
     const [viewingClient, setViewingClient] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
+
+    // Filters
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
+    const [filterSearch, setFilterSearch] = useState('');
 
     const [formData, setFormData] = useState({
         identification: '',
@@ -407,6 +415,73 @@ export function Clientes() {
         navigate('/crm/orcamentos', { state: { newQuoteClientId: client.id } });
     };
 
+    const getFilteredClients = () => {
+        let filtered = [...clients];
+        if (filterSearch) {
+            const s = filterSearch.toLowerCase();
+            filtered = filtered.filter(c => 
+                (c.name || '').toLowerCase().includes(s) || 
+                (c.email || '').toLowerCase().includes(s) ||
+                (c.whatsapp || '').toLowerCase().includes(s) ||
+                (c.eircode || '').toLowerCase().includes(s)
+            );
+        }
+        if (filterDateFrom) {
+            filtered = filtered.filter(c => new Date(c.created_at) >= new Date(filterDateFrom));
+        }
+        if (filterDateTo) {
+            filtered = filtered.filter(c => new Date(c.created_at) <= new Date(filterDateTo + 'T23:59:59'));
+        }
+        return filtered;
+    };
+
+    const exportPDF = () => {
+        const filteredClients = getFilteredClients();
+        const doc = new jsPDF();
+        const BRAND = [139, 0, 0];
+
+        doc.setFillColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Swift Transport - Clients Report', 105, 13, { align: 'center' });
+
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 190, 28, { align: 'right' });
+
+        let filterText = '';
+        if (filterDateFrom || filterDateTo) filterText += `Date: ${filterDateFrom || '...'} to ${filterDateTo || '...'} `;
+        if (filterSearch) filterText += `Search: ${filterSearch} `;
+        if (filterText) doc.text(`Filters: ${filterText}`, 15, 28);
+
+        autoTable(doc, {
+            startY: 35,
+            head: [['#', 'Name', 'Email', 'WhatsApp', 'Eircode', 'Created At']],
+            body: filteredClients.map((c, i) => [
+                i + 1,
+                sanitizePdfText(c.name || '-'),
+                sanitizePdfText(c.email || '-'),
+                sanitizePdfText(c.whatsapp || '-'),
+                sanitizePdfText(c.eircode || '-'),
+                new Date(c.created_at).toLocaleDateString('en-GB')
+            ]),
+            headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            margin: { left: 15, right: 15 },
+            styles: { fontSize: 8 }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        doc.setTextColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.text(`Total Clients: ${filteredClients.length}`, 15, finalY);
+        
+        doc.save(`Clients_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingClient(null);
@@ -445,10 +520,54 @@ export function Clientes() {
                     <p className="text-sm text-gray-500">Manage your customers</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+                    <Button onClick={exportPDF} variant="outline" className="flex items-center gap-2">
+                        <Download size={18} /> Export PDF
+                    </Button>
+                    <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#8B0000] hover:bg-red-900">
                         <Plus size={18} /> Add New Client
                     </Button>
-                    <Button onClick={fetchClients} variant="outline" size="sm">Refresh</Button>
+                    <Button onClick={fetchClients} variant="outline" size="sm"><RefreshCw size={16} /></Button>
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search clients..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                            value={filterSearch}
+                            onChange={(e) => setFilterSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Calendar size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateFrom}
+                            onChange={(e) => setFilterDateFrom(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Calendar size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateTo}
+                            onChange={(e) => setFilterDateTo(e.target.value)}
+                        />
+                    </div>
+                    <Button 
+                        variant="outline" 
+                        onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterSearch(''); }}
+                        className="text-gray-500 hover:text-red-600"
+                    >
+                        Clear Filters
+                    </Button>
                 </div>
             </div>
 
@@ -457,7 +576,7 @@ export function Clientes() {
             ) : (
                 <Table
                     columns={columns}
-                    data={clients}
+                    data={getFilteredClients()}
                     keyExtractor={(row) => row.id}
                     actions={(row) => (
                         <div className="flex items-center justify-end gap-2">

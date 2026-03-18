@@ -6,9 +6,12 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { generateQuotePDF, generateReceiptPDF } from '../../services/pdfService';
-import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown, Trash2 } from 'lucide-react';
+import { Download, Mail, Pencil, Loader2, Percent, CheckCircle2, Calendar as CalendarIcon, Clock, CheckCircle, X as XIcon, ChevronDown, Trash2, Search, RefreshCw } from 'lucide-react';
 import { logAction } from '../../services/auditLogger';
 import { isOverlap } from '../../utils/securityUtils';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { sanitizePdfText } from '../../utils/pdfUtils';
 
 const TIME_OPTIONS = [];
 for (let h = 7; h <= 20; h++) {
@@ -51,6 +54,12 @@ export function Orcamentos() {
     const [scheduleTimes, setScheduleTimes] = useState({ date: '', start: '09:00', end: '12:00' });
     const [isCheckingOverlap, setIsCheckingOverlap] = useState(false);
     const [overlapError, setOverlapError] = useState(null);
+
+    // Filters
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterSearch, setFilterSearch] = useState('');
 
     useEffect(() => {
         fetchQuotes();
@@ -347,6 +356,80 @@ export function Orcamentos() {
         }
     };
 
+    const getFilteredQuotes = () => {
+        let filtered = [...quotes];
+        if (filterSearch) {
+            const s = filterSearch.toLowerCase();
+            filtered = filtered.filter(q => 
+                (q.quote_number || '').toLowerCase().includes(s) || 
+                (q.clients?.name || '').toLowerCase().includes(s) ||
+                (q.description || '').toLowerCase().includes(s)
+            );
+        }
+        if (filterStatus) {
+            filtered = filtered.filter(q => q.status === filterStatus);
+        }
+        if (filterDateFrom) {
+            filtered = filtered.filter(q => new Date(q.created_at) >= new Date(filterDateFrom));
+        }
+        if (filterDateTo) {
+            filtered = filtered.filter(q => new Date(q.created_at) <= new Date(filterDateTo + 'T23:59:59'));
+        }
+        return filtered;
+    };
+
+    const exportPDF = () => {
+        const filteredQuotes = getFilteredQuotes();
+        const doc = new jsPDF();
+        const BRAND = [139, 0, 0];
+
+        doc.setFillColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Swift Transport - Quotes Report', 105, 13, { align: 'center' });
+
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 190, 28, { align: 'right' });
+
+        let filterText = '';
+        if (filterDateFrom || filterDateTo) filterText += `Date: ${filterDateFrom || '...'} to ${filterDateTo || '...'} `;
+        if (filterStatus) filterText += `Status: ${filterStatus} `;
+        if (filterSearch) filterText += `Search: ${filterSearch} `;
+        if (filterText) doc.text(`Filters: ${filterText}`, 15, 28);
+
+        autoTable(doc, {
+            startY: 35,
+            head: [['#', 'Number', 'Client', 'Description', 'Total (€)', 'Date', 'Status']],
+            body: filteredQuotes.map((q, i) => [
+                i + 1,
+                q.quote_number || '-',
+                sanitizePdfText(q.clients?.name || '-'),
+                sanitizePdfText(q.description || '-'),
+                `€${Number(q.total || 0).toFixed(2)}`,
+                q.service_date ? new Date(q.service_date).toLocaleDateString('en-GB') : '-',
+                (q.status || 'pending').toUpperCase()
+            ]),
+            headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            margin: { left: 15, right: 15 },
+            styles: { fontSize: 8 }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+        const totalValue = filteredQuotes.reduce((sum, q) => sum + Number(q.total || 0), 0);
+
+        doc.setFontSize(10);
+        doc.setTextColor(BRAND[0], BRAND[1], BRAND[2]);
+        doc.text(`Total Quotes: ${filteredQuotes.length}`, 15, finalY);
+        doc.text(`Total Value: €${totalValue.toFixed(2)}`, 190, finalY, { align: 'right' });
+        
+        doc.save(`Quotes_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const handleDelete = async (e, quote) => {
         e.stopPropagation();
         if (!window.confirm(`Are you sure you want to permanently delete quote "${quote.quote_number}"? This action cannot be undone.`)) return;
@@ -489,8 +572,65 @@ export function Orcamentos() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
                 <div className="flex gap-2">
-                    <Button onClick={openCreate}>Create Quote</Button>
-                    <Button onClick={fetchQuotes} variant="outline">Refresh</Button>
+                    <Button onClick={exportPDF} variant="outline" className="flex items-center gap-2">
+                        <Download size={18} /> Export PDF
+                    </Button>
+                    <Button onClick={openCreate} className="bg-[#8B0000] hover:bg-red-900 text-white">Create Quote</Button>
+                    <Button onClick={fetchQuotes} variant="outline" size="sm"><RefreshCw size={16} /></Button>
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="relative md:col-span-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none text-sm"
+                            value={filterSearch}
+                            onChange={(e) => setFilterSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateFrom}
+                            onChange={(e) => setFilterDateFrom(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon size={18} className="text-gray-400" />
+                        <input
+                            type="date"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm"
+                            value={filterDateTo}
+                            onChange={(e) => setFilterDateTo(e.target.value)}
+                        />
+                    </div>
+                    <select
+                        className="px-3 py-2 border border-gray-200 rounded-lg outline-none text-sm appearance-none bg-white"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="sent">Sent</option>
+                        <option value="approved">Approved</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="completed">Completed</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <Button 
+                        variant="outline" 
+                        onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterStatus(''); setFilterSearch(''); }}
+                        className="text-gray-500 hover:text-red-600"
+                    >
+                        Clear
+                    </Button>
                 </div>
             </div>
 
@@ -499,7 +639,7 @@ export function Orcamentos() {
             ) : (
                 <Table
                     columns={columns}
-                    data={quotes}
+                    data={getFilteredQuotes()}
                     keyExtractor={(row) => row.id}
                     onRowClick={handleRowClick}
                     actions={(row) => (

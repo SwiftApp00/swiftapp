@@ -12,6 +12,7 @@ import {
 import { logAction } from '../../services/auditLogger';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { sanitizePdfText } from '../../utils/pdfUtils';
 
 export function Financeiro() {
     const [allRecords, setAllRecords] = useState([]);
@@ -238,8 +239,8 @@ export function Financeiro() {
             body: records.map((r, i) => [
                 i + 1,
                 r.finance_number || '-',
-                r.category || '-',
-                (r.description || r.quotes?.description || '-').substring(0, 40),
+                sanitizePdfText(r.category || '-'),
+                sanitizePdfText(r.description || r.quotes?.description || '-').substring(0, 40),
                 Number(r.amount || 0).toFixed(2),
                 r.due_date ? new Date(r.due_date).toLocaleDateString('en-GB') : '-',
                 getDisplayStatus(r) === 'payment_received' ? 'PAYMENT RECEIVED' :
