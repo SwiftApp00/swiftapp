@@ -442,7 +442,10 @@ export function Financeiro() {
                     {activeView === 'dashboard' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                <div 
+                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => { setActiveView('receivable'); setFilterStatus('awaiting_payment'); }}
+                                >
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Awaiting Payment</p>
@@ -452,7 +455,10 @@ export function Financeiro() {
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fefce8, #fef08a)' }}><CircleDollarSign size={22} className="text-yellow-600" /></div>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                <div 
+                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => { setActiveView('receivable'); setFilterStatus('payment_received'); }}
+                                >
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Payment Received</p>
@@ -462,7 +468,10 @@ export function Financeiro() {
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #bbf7d0)' }}><TrendingUp size={22} className="text-green-600" /></div>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                <div 
+                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => { setActiveView('payable'); setFilterStatus('pending'); }}
+                                >
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Outflows (Payable)</p>
@@ -472,7 +481,10 @@ export function Financeiro() {
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fef2f2, #fecaca)' }}><TrendingDown size={22} className="text-red-600" /></div>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                <div 
+                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => { setActiveView('payable'); setFilterStatus('paid'); }}
+                                >
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Paid (Payable)</p>
