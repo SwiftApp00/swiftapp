@@ -148,6 +148,34 @@ export function Configuracoes() {
         }
     };
 
+    const handleDeleteUser = async (user) => {
+        if (!window.confirm(`Are you sure you want to delete user "${user.full_name}"? This will permanently remove them from the system and they will not be able to log in again.`)) return;
+        
+        setLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const { data, error } = await supabase.functions.invoke('delete-user', {
+                body: { user_id: user.id },
+                headers: {
+                    Authorization: `Bearer ${session?.access_token}`
+                }
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            await logAction('DELETE_USER_SUCCESS', 'Settings', { target_name: user.full_name, target_email: user.email });
+            alert('User deleted successfully.');
+            fetchProfiles();
+        } catch (err) {
+            console.error(err);
+            alert(`Error deleting user: ${err.message}`);
+            await logAction('DELETE_USER_ERROR', 'Settings', { target_name: user.full_name, target_email: user.email, error: err.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const logColumns = [
         { header: 'Time', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleString() },
         { header: 'User', accessor: 'user_id', render: (row) => {
@@ -184,6 +212,17 @@ export function Configuracoes() {
             </span>
         )},
         { header: 'Joined', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleDateString() },
+        { header: 'Actions', accessor: 'actions', render: (row) => (
+            <div className="flex justify-end">
+                <button 
+                    onClick={() => handleDeleteUser(row)}
+                    className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Delete User"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        )},
     ];
 
     return (
