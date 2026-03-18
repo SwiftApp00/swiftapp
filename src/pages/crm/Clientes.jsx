@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, MapPin, Loader2, Trash2, CheckCircle2, Eye, Edit3, Briefcase } from 'lucide-react';
 import { logAction } from '../../services/auditLogger';
 
 // Irish Eircode Routing Key → City / County mapping
@@ -149,13 +149,16 @@ const EIRCODE_ROUTING_KEYS = {
 };
 
 export function Clientes() {
+    const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSearchingEircode, setIsSearchingEircode] = useState(false);
     const [isSearchingDeliveryEircode, setIsSearchingDeliveryEircode] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const [viewingClient, setViewingClient] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -196,7 +199,12 @@ export function Clientes() {
         setLoading(false);
     };
 
-    const handleRowClick = (client) => {
+    const handleViewClick = (client) => {
+        setViewingClient(client);
+        setIsViewModalOpen(true);
+    };
+
+    const handleEditClick = (client) => {
         setEditingClient(client);
         setFormData({
             identification: client.identification || '',
@@ -377,21 +385,25 @@ export function Clientes() {
         }
     };
 
-    const handleDelete = async () => {
-        if (!editingClient || !window.confirm(`Are you sure you want to permanently delete client "${editingClient.name}"? This action cannot be undone.`)) return;
-        setIsSubmitting(true);
+    const handleDeleteClick = async (client) => {
+        if (!window.confirm(`Are you sure you want to permanently delete client "${client.name}"? This action cannot be undone.`)) return;
+        setLoading(true);
         try {
-            const { error } = await supabase.from('clients').delete().eq('id', editingClient.id);
+            const { error } = await supabase.from('clients').delete().eq('id', client.id);
             if (error) throw error;
-            await logAction('DELETE', 'Clients', { client_id: editingClient.id, client_name: editingClient.name });
-            handleCloseModal();
+            await logAction('DELETE', 'Clients', { client_id: client.id, client_name: client.name });
+            if (editingClient?.id === client.id) handleCloseModal();
             fetchClients();
         } catch (err) {
             console.error("Delete error:", err);
             alert("Error deleting client.");
-        } finally {
-            setIsSubmitting(false);
+            setLoading(false);
         }
+    };
+
+    const handleGenerateQuote = (client) => {
+        setIsViewModalOpen(false);
+        navigate('/orcamentos', { state: { newQuoteClientId: client.id } });
     };
 
     const handleCloseModal = () => {
@@ -404,6 +416,11 @@ export function Clientes() {
             delivery_eircode: '', delivery_street: '', delivery_house_number: '', delivery_apartment: '', delivery_area: '', delivery_city: '', delivery_county: '',
             whatsapp: '', email: '', instagram: ''
         });
+    };
+
+    const handleCloseViewModal = () => {
+        setIsViewModalOpen(false);
+        setViewingClient(null);
     };
 
     const isIdValid = formData.identification_type === 'Company / Legal Entity' || formData.identification_type === 'Individual / Natural Person';
@@ -424,7 +441,7 @@ export function Clientes() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-                    <p className="text-sm text-gray-500">Manage your customers (Click row to edit)</p>
+                    <p className="text-sm text-gray-500">Manage your customers</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
@@ -441,7 +458,13 @@ export function Clientes() {
                     columns={columns}
                     data={clients}
                     keyExtractor={(row) => row.id}
-                    onRowClick={handleRowClick}
+                    actions={(row) => (
+                        <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => handleViewClick(row)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye size={16} /></button>
+                            <button onClick={() => handleEditClick(row)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Edit"><Edit3 size={16} /></button>
+                            <button onClick={() => handleDeleteClick(row)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                    )}
                 />
             )}
 
@@ -625,17 +648,6 @@ export function Clientes() {
                     </div>
 
                     <div className="flex gap-3 pt-4 border-t border-gray-100 mt-2">
-                        {editingClient && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="text-red-600 border-red-100 hover:bg-red-50"
-                                onClick={handleDelete}
-                                disabled={isSubmitting}
-                            >
-                                <Trash2 size={18} />
-                            </Button>
-                        )}
                         <div className="flex-1 flex gap-3">
                             <Button type="button" variant="outline" className="flex-1" onClick={handleCloseModal}>Cancel</Button>
                             {showRestOfForm && (
@@ -646,6 +658,67 @@ export function Clientes() {
                         </div>
                     </div>
                 </form>
+            </Modal>
+
+            {/* View Modal */}
+            <Modal
+                isOpen={isViewModalOpen}
+                onClose={handleCloseViewModal}
+                title="Client Details"
+            >
+                {viewingClient && (
+                    <div className="space-y-6 pt-2">
+                        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-4">
+                            <div>
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Personal Info</h4>
+                                <p className="text-gray-900 font-semibold text-lg">{viewingClient.name}</p>
+                                <p className="text-gray-600 text-sm">{viewingClient.identification_type}</p>
+                                <p className="text-gray-600 font-mono text-sm mt-1">{viewingClient.identification}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                                <div>
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Contact</h4>
+                                    {viewingClient.whatsapp && <p className="text-gray-700 text-sm">📞 {viewingClient.whatsapp}</p>}
+                                    {viewingClient.email && <p className="text-gray-700 text-sm">✉️ {viewingClient.email}</p>}
+                                    {viewingClient.instagram && <p className="text-gray-700 text-sm">📸 {viewingClient.instagram}</p>}
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Main Address</h4>
+                                    <p className="text-gray-700 text-sm font-semibold">{viewingClient.eircode}</p>
+                                    <p className="text-gray-600 text-sm">
+                                        {[viewingClient.house_number, viewingClient.apartment, viewingClient.street].filter(Boolean).join(', ')}
+                                    </p>
+                                    <p className="text-gray-600 text-sm">
+                                        {[viewingClient.area, viewingClient.city, viewingClient.county].filter(Boolean).join(', ')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {viewingClient.delivery_eircode && (
+                                <div className="pt-4 border-t border-gray-200">
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Delivery Address</h4>
+                                    <p className="text-gray-700 text-sm font-semibold">{viewingClient.delivery_eircode}</p>
+                                    <p className="text-gray-600 text-sm">
+                                        {[viewingClient.delivery_house_number, viewingClient.delivery_apartment, viewingClient.delivery_street].filter(Boolean).join(', ')}
+                                    </p>
+                                    <p className="text-gray-600 text-sm">
+                                        {[viewingClient.delivery_area, viewingClient.delivery_city, viewingClient.delivery_county].filter(Boolean).join(', ')}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <Button type="button" variant="outline" className="flex-1 text-gray-600" onClick={handleCloseViewModal}>
+                                Close
+                            </Button>
+                            <Button type="button" className="flex-1 bg-green-600 hover:bg-green-700 text-white flex gap-2 items-center justify-center" onClick={() => handleGenerateQuote(viewingClient)}>
+                                <Briefcase size={16} /> Generate Quote
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

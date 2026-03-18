@@ -57,7 +57,7 @@ export function Orcamentos() {
         fetchClients();
     }, []);
 
-    // Handle deep linked quote from Dashboard
+    // Handle deep linked quote from Dashboard or New Quote from Clients
     useEffect(() => {
         if (location.state?.selectedQuoteId && quotes.length > 0) {
             const quote = quotes.find(q => q.id === location.state.selectedQuoteId);
@@ -65,6 +65,16 @@ export function Orcamentos() {
                 setSelectedQuote(quote);
                 setIsDetailOpen(true);
             }
+        }
+
+        if (location.state?.newQuoteClientId) {
+            setForm(prev => ({ ...prev, client_id: location.state.newQuoteClientId }));
+            setIsModalOpen(true);
+            setIsEditing(false);
+            setEditingQuoteId(null);
+            
+            // Clear the state so refreshing doesn't keep opening the modal
+            window.history.replaceState({}, document.title);
         }
     }, [location.state, quotes]);
 
