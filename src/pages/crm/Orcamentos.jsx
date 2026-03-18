@@ -481,7 +481,7 @@ export function Orcamentos() {
                 type: 'quote_pdf',
             }];
 
-            await supabase.from('quotes').update({ email_logs: emailLogs }).eq('id', savedQuoteData.id);
+            await supabase.from('quotes').update({ email_logs: emailLogs, status: 'sent' }).eq('id', savedQuoteData.id);
 
             alert('Email sent successfully!');
             setShowEmailConfirm(false);
