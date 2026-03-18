@@ -35,7 +35,10 @@ export function Configuracoes() {
     const [isCreatingUser, setIsCreatingUser] = useState(false);
 
     useEffect(() => {
-        if (activeTab === 'logs') fetchLogs();
+        if (activeTab === 'logs') {
+            fetchLogs();
+            fetchProfiles();
+        }
         if (activeTab === 'users') fetchProfiles();
         if (activeTab === 'notifications') fetchBrandingConfig();
     }, [activeTab]);
@@ -46,7 +49,7 @@ export function Configuracoes() {
             .from('audit_logs')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(100);
+            .limit(20);
         if (data) setLogs(data);
         setLoading(false);
     };
@@ -147,6 +150,11 @@ export function Configuracoes() {
 
     const logColumns = [
         { header: 'Time', accessor: 'created_at', render: (row) => new Date(row.created_at).toLocaleString() },
+        { header: 'User', accessor: 'user_id', render: (row) => {
+            if (!row.user_id) return <span className="text-gray-400 italic">System</span>;
+            const p = profiles.find(x => x.id === row.user_id);
+            return <span className="font-medium text-gray-800">{p ? p.full_name : 'Unknown User'}</span>;
+        }},
         { header: 'Module', accessor: 'module' },
         { header: 'Action', accessor: 'action', render: (row) => (
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -221,11 +229,13 @@ export function Configuracoes() {
                         {loading ? (
                             <div className="h-32 flex items-center justify-center text-gray-400">Loading logs...</div>
                         ) : (
-                            <Table
-                                columns={logColumns}
-                                data={logs}
-                                keyExtractor={(row) => row.id}
-                            />
+                            <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                <Table
+                                    columns={logColumns}
+                                    data={logs}
+                                    keyExtractor={(row) => row.id}
+                                />
+                            </div>
                         )}
                     </div>
                 )}
